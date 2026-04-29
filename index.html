@@ -1049,46 +1049,61 @@ async function completeTask(taskId) {
 function initExchange() {
   const sellInput = document.getElementById("sellGpuAmount");
   const sellEstimate = document.getElementById("sellEstimate");
+  const sellBtn = document.getElementById("sellGpuBtn");
   
   if (sellInput) {
+    // Обновление预估 при вводе
     sellInput.addEventListener("input", function() {
       const amount = parseFloat(this.value) || 0;
-      sellEstimate.innerHTML = `Вы получите: ${(amount * EXCHANGE_RATE).toFixed(4)} <img src="ton.png" class="icon-img-small">`;
+      sellEstimate.innerHTML = `Вы получите: ${(amount * 0.001).toFixed(4)} <img src="ton.png" class="icon-img-small">`;
     });
   }
   
-  document.getElementById("sellGpuBtn").onclick = async () => {
-    await syncWithServer();
-    
-    const amount = parseFloat(document.getElementById("sellGpuAmount").value);
-    if (isNaN(amount) || amount <= 0) return;
-    if (playerData.gpuTokens < amount) { 
-      showToast("Недостаточно GPU", 'error');
-      return; 
-    }
-    
-    const tonReceived = amount * EXCHANGE_RATE;
-    playerData.gpuTokens -= amount;
-    playerData.ton += tonReceived;
-    
-    updateUI();
-    const saveResult = await apiRequest("save", { 
-      ton: playerData.ton, 
-      gpu: playerData.gpuTokens, 
-      friends: playerData.friends,
-      accumulatedTon: accumulatedTon,
-      accumulatedGpu: accumulatedGpu,
-      minerQuantities: minerQuantities 
-    });
-    
-    if (saveResult?.success) {
-      await syncWithServer();
-      document.getElementById("sellGpuAmount").value = "";
-      showToast(`✅ Продано ${amount} GPU за ${tonReceived.toFixed(4)} TON`, 'success');
-    } else {
-      showToast("❌ Ошибка", 'error');
-    }
-  };
+  if (sellBtn) {
+    sellBtn.onclick = async () => {
+      const amount = parseFloat(sellInput.value);
+      // Валидация
+      if (isNaN(amount) || amount <= 0) {
+        showToast("Введите корректное количество", 'error');
+        return;
+      }
+      
+      sellBtn.disabled = true;
+      sellBtn.textContent = "⏳ Обработка...";
+      
+      try {
+        // Отправляем запрос на новый эндпоинт /api/exchange
+        const response = await fetch(`https://tst-production-c55e.up.railway.app/api/exchange`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId.toString(),
+            amount: amount
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          // Обновляем локальные данные и интерфейс
+          playerData.ton = result.data.ton;
+          playerData.gpuTokens = result.data.gpu;
+          updateUI();
+          sellInput.value = "";
+          sellEstimate.innerHTML = `Вы получите: 0 <img src="ton.png" class="icon-img-small">`;
+          showToast(`✅ Продано ${amount} GPU за ${result.data.tonReceived.toFixed(4)} TON`, 'success');
+        } else {
+          showToast(result.error || "Ошибка при продаже", 'error');
+        }
+      } catch (error) {
+        console.error("Exchange error:", error);
+        showToast("❌ Ошибка сервера", 'error');
+      } finally {
+        sellBtn.disabled = false;
+        sellBtn.textContent = "Продать";
+      }
+    };
+  }
 }
 
 // ========== СИМУЛЯЦИЯ ЗАГРУЗКИ ==========

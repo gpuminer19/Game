@@ -851,35 +851,30 @@ async function buyMiner(minerId) {
   const result = await apiRequest("buy", { minerId, quantity: 1 });
   
   if (result?.success) {
-    // ✅ ИСПРАВЛЕНО: данные приходят прямо в result
+    // Обновляем данные из ответа сервера (они уже актуальные)
     playerData.ton = result.ton;
     playerData.gpuTokens = result.gpu;
     minerQuantities = result.minerQuantities;
     
-    // Обновляем количество для купленного майнера
-    if (minerQuantities[minerId] !== undefined) {
-      showToast(`✅ +1 ${miner.name}!`, 'success');
-    }
-    
+    // Обновляем интерфейс
     renderAllCards();
     updateMiningRateDisplay();
     updateUI();
     
-    // Дополнительная синхронизация для уверенности
-    setTimeout(() => syncWithServer(), 500);
+    showToast(`✅ +1 ${miner.name}!`, 'success');
+    
+    // ❌ УБИРАЕМ эту строку - она вызывает проблемы!
+    // setTimeout(() => syncWithServer(), 500);
+    
   } else if (result?.error === 'LIMIT_REACHED') {
-    showToast(`❌ Вы можете купить не более ${miner.maxQuantity} шт. ${miner.name}`, 'error');
+    showToast(`❌ Лимит: макс. ${miner.maxQuantity} шт. ${miner.name}`, 'error');
   } else if (result?.error === 'INSUFFICIENT_TON') {
-    showToast(`❌ Недостаточно TON. Нужно: ${miner.price} TON`, 'error');
+    showToast(`❌ Не хватает TON. Нужно: ${miner.price} TON`, 'error');
   } else if (result?.error === 'INSUFFICIENT_GPU') {
-    showToast(`❌ Недостаточно GPU. Нужно: ${miner.price} GPU`, 'error');
-  } else if (result?.error === 'TOO_FAST') {
-    showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
+    showToast(`❌ Не хватает GPU. Нужно: ${miner.price} GPU`, 'error');
   } else {
     console.error("Buy error:", result);
     showToast("❌ Ошибка при покупке", 'error');
-    // На всякий случай синхронизируемся с сервером
-    await syncWithServer();
   }
 }
 

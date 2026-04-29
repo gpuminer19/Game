@@ -851,17 +851,23 @@ async function buyMiner(minerId) {
   const result = await apiRequest("buy", { minerId, quantity: 1 });
   
   if (result?.success) {
-    if (result.data) {
-      playerData.ton = result.data.ton;
-      playerData.gpuTokens = result.data.gpu;
-      minerQuantities = result.data.minerQuantities;
-      renderAllCards();
-      updateMiningRateDisplay();
-      updateUI();
-    } else {
-      await syncWithServer();
+    // ✅ ИСПРАВЛЕНО: данные приходят прямо в result
+    playerData.ton = result.ton;
+    playerData.gpuTokens = result.gpu;
+    minerQuantities = result.minerQuantities;
+    
+    // Принудительно обновляем количество для этого майнера
+    if (minerQuantities[minerId] !== undefined) {
+      // Можно добавить анимацию или звук
+      showToast(`✅ +1 ${miner.name}!`, 'success');
     }
-    showToast(`✅ Вы купили ${miner.name}!`, 'success');
+    
+    renderAllCards();
+    updateMiningRateDisplay();
+    updateUI();
+    
+    // Дополнительно синхронизируем с сервером для уверенности
+    setTimeout(() => syncWithServer(), 500);
   } else if (result?.error === 'LIMIT_REACHED') {
     showToast(`❌ Вы можете купить не более ${miner.maxQuantity} шт. ${miner.name}`, 'error');
   } else if (result?.error === 'INSUFFICIENT_TON') {

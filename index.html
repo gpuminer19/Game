@@ -941,11 +941,17 @@ async function apiRequest(action, additionalData = {}) {
   try {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "X-Telegram-Init-Data": tg.initData || ""
+      },
       body: JSON.stringify({ action, user_id: userId.toString(), name: user?.first_name || "Игрок", ...additionalData })
     });
     const result = await response.json();
     if (result.error === 'BANNED') { showToast(result.message || "❌ Аккаунт заблокирован", 'error'); return null; }
+    if (result.error === 'USER_ID_MISMATCH') { showToast("❌ Ошибка авторизации", 'error'); return null; }
+    if (result.error === 'TOO_MANY_REQUESTS') { showToast("⚠️ Слишком много запросов. Подождите.", 'error'); return null; }
+    if (result.error === 'CLAIM_COOLDOWN') { showToast("⚠️ Собирать награду можно не чаще 1 раза в 30 секунд", 'error'); return null; }
     return result;
   } catch (error) { console.error(error); return null; }
 }
@@ -1052,7 +1058,6 @@ function initExchange() {
   const sellBtn = document.getElementById("sellGpuBtn");
   
   if (sellInput) {
-    // Обновление预估 при вводе
     sellInput.addEventListener("input", function() {
       const amount = parseFloat(this.value) || 0;
       sellEstimate.innerHTML = `Вы получите: ${(amount * 0.001).toFixed(4)} <img src="ton.png" class="icon-img-small">`;
@@ -1062,7 +1067,6 @@ function initExchange() {
   if (sellBtn) {
     sellBtn.onclick = async () => {
       const amount = parseFloat(sellInput.value);
-      // Валидация
       if (isNaN(amount) || amount <= 0) {
         showToast("Введите корректное количество", 'error');
         return;
@@ -1072,10 +1076,12 @@ function initExchange() {
       sellBtn.textContent = "⏳ Обработка...";
       
       try {
-        // Отправляем запрос на новый эндпоинт /api/exchange
         const response = await fetch(`https://tst-production-c55e.up.railway.app/api/exchange`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "X-Telegram-Init-Data": tg.initData || ""
+          },
           body: JSON.stringify({
             user_id: userId.toString(),
             amount: amount
@@ -1085,7 +1091,6 @@ function initExchange() {
         const result = await response.json();
         
         if (result.success) {
-          // Обновляем локальные данные и интерфейс
           playerData.ton = result.data.ton;
           playerData.gpuTokens = result.data.gpu;
           updateUI();

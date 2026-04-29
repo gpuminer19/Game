@@ -856,9 +856,8 @@ async function buyMiner(minerId) {
     playerData.gpuTokens = result.gpu;
     minerQuantities = result.minerQuantities;
     
-    // Принудительно обновляем количество для этого майнера
+    // Обновляем количество для купленного майнера
     if (minerQuantities[minerId] !== undefined) {
-      // Можно добавить анимацию или звук
       showToast(`✅ +1 ${miner.name}!`, 'success');
     }
     
@@ -866,7 +865,7 @@ async function buyMiner(minerId) {
     updateMiningRateDisplay();
     updateUI();
     
-    // Дополнительно синхронизируем с сервером для уверенности
+    // Дополнительная синхронизация для уверенности
     setTimeout(() => syncWithServer(), 500);
   } else if (result?.error === 'LIMIT_REACHED') {
     showToast(`❌ Вы можете купить не более ${miner.maxQuantity} шт. ${miner.name}`, 'error');
@@ -877,7 +876,10 @@ async function buyMiner(minerId) {
   } else if (result?.error === 'TOO_FAST') {
     showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
   } else {
+    console.error("Buy error:", result);
     showToast("❌ Ошибка при покупке", 'error');
+    // На всякий случай синхронизируемся с сервером
+    await syncWithServer();
   }
 }
 

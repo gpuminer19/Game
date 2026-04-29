@@ -787,8 +787,8 @@ function startClientMining() {
     if (earnedTon > 0 || earnedGpu > 0) {
       accumulatedTon += earnedTon;
       accumulatedGpu += earnedGpu;
-      document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(4);
-      document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(4);
+      document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(5);
+      document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(5);
     }
     lastMiningTimestamp = now;
   }, 1000);

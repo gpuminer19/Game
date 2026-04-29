@@ -845,38 +845,130 @@ async function claimAccumulatedReward() {
 
 // ========== ПОКУПКА МАЙНЕРОВ ==========
 async function buyMiner(minerId) {
+  console.log("🟢 [ПОКУПКА] Начало. Майнер:", minerId);
+  
   const miner = gpuTemplates.find(m => m.id === minerId);
-  if (!miner) return;
+  if (!miner) {
+    console.log("🔴 [ПОКУПКА] Майнер не найден:", minerId);
+    return;
+  }
+  
+  console.log("🟢 [ПОКУПКА] Данные майнера:", {
+    name: miner.name,
+    price: miner.price,
+    priceCurrency: miner.priceCurrency,
+    currentQuantity: minerQuantities[minerId] || 0
+  });
+  
+  console.log("🟢 [ПОКУПКА] Текущее состояние до запроса:", {
+    ton: playerData.ton,
+    gpu: playerData.gpuTokens,
+    minerQuantities: JSON.parse(JSON.stringify(minerQuantities))
+  });
   
   const result = await apiRequest("buy", { minerId, quantity: 1 });
   
+  console.log("🟢 [ПОКУПКА] Ответ от сервера:", JSON.stringify(result, null, 2));
+  
   if (result?.success) {
-    // Обновляем данные из ответа сервера (они уже актуальные)
+    console.log("🟢 [ПОКУПКА] Успешная покупка!");
+    
+    // Логируем старые значения
+    const oldTon = playerData.ton;
+    const oldGpu = playerData.gpuTokens;
+    const oldMiners = JSON.parse(JSON.stringify(minerQuantities));
+    
+    // Обновляем данные
     playerData.ton = result.ton;
     playerData.gpuTokens = result.gpu;
     minerQuantities = result.minerQuantities;
     
-    // Обновляем интерфейс
+    console.log("🟢 [ПОКУПКА] Изменения:", {
+      ton: { было: oldTon, стало: playerData.ton, разница: (playerData.ton - oldTon).toFixed(5) },
+      gpu: { было: oldGpu, стало: playerData.gpuTokens, разница: (playerData.gpuTokens - oldGpu).toFixed(5) },
+      minerQuantities: {
+        было: oldMiners,
+        стало: minerQuantities,
+        изменения: {
+          [minerId]: { было: oldMiners[minerId] || 0, стало: minerQuantities[minerId] || 0 }
+        }
+      }
+    });
+    
+    // Проверяем, что количество увеличилось
+    if (minerQuantities[minerId] !== undefined) {
+      const newQty = minerQuantities[minerId];
+      const oldQty = oldMiners[minerId] || 0;
+      console.log(`🟢 [ПОКУПКА] Майнер ${miner.name}: ${oldQty} → ${newQty} (+${newQty - oldQty})`);
+      showToast(`✅ +1 ${miner.name}!`, 'success');
+    } else {
+      console.log("🔴 [ПОКУПКА] ВНИМАНИЕ: minerQuantities не содержит", minerId);
+      console.log("🔴 [ПОКУПКА] Доступные майнеры в ответе:", Object.keys(minerQuantities));
+    }
+    
     renderAllCards();
     updateMiningRateDisplay();
     updateUI();
     
-    showToast(`✅ +1 ${miner.name}!`, 'success');
+    console.log("🟢 [ПОКУПКА] Интерфейс обновлен");
     
-    // ❌ УБИРАЕМ эту строку - она вызывает проблемы!
-    // setTimeout(() => syncWithServer(), 500);
+    // Проверка синхронизации
+    console.log("🟢 [ПОКУПКА] Запуск syncWithServer через 500мс для проверки...");
+    setTimeout(async () => {
+      console.log("🟡 [СИНХРОНИЗАЦИЯ] Начало syncWithServer после покупки");
+      const beforeSync = {
+        ton: playerData.ton,
+        gpu: playerData.gpuTokens,
+        miners: JSON.parse(JSON.stringify(minerQuantities))
+      };
+      console.log("🟡 [СИНХРОНИЗАЦИЯ] Состояние до синхронизации:", beforeSync);
+      
+      await syncWithServer();
+      
+      const afterSync = {
+        ton: playerData.ton,
+        gpu: playerData.gpuTokens,
+        miners: JSON.parse(JSON.stringify(minerQuantities))
+      };
+      console.log("🟡 [СИНХРОНИЗАЦИЯ] Состояние после синхронизации:", afterSync);
+      
+      // Сравниваем, не потерялись ли майнеры
+      if (JSON.stringify(beforeSync.miners) !== JSON.stringify(afterSync.miners)) {
+        console.log("🔴 [СИНХРОНИЗАЦИЯ] ВНИМАНИЕ! Данные изменились после синхронизации!");
+        console.log("🔴 [СИНХРОНИЗАЦИЯ] Потеряны майнеры:", {
+          до: beforeSync.miners,
+          после: afterSync.miners,
+          разница_по_minerId_minerId: {
+            [minerId]: {
+              до: beforeSync.miners[minerId] || 0,
+              после: afterSync.miners[minerId] || 0
+            }
+          }
+        });
+        showToast("⚠️ Ошибка синхронизации! Майнеры не сохранились.", 'error');
+      } else {
+        console.log("🟢 [СИНХРОНИЗАЦИЯ] Данные сохранились корректно");
+      }
+    }, 500);
     
-  } else if (result?.error === 'LIMIT_REACHED') {
-    showToast(`❌ Лимит: макс. ${miner.maxQuantity} шт. ${miner.name}`, 'error');
-  } else if (result?.error === 'INSUFFICIENT_TON') {
-    showToast(`❌ Не хватает TON. Нужно: ${miner.price} TON`, 'error');
-  } else if (result?.error === 'INSUFFICIENT_GPU') {
-    showToast(`❌ Не хватает GPU. Нужно: ${miner.price} GPU`, 'error');
   } else {
-    console.error("Buy error:", result);
-    showToast("❌ Ошибка при покупке", 'error');
+    console.log("🔴 [ПОКУПКА] Ошибка покупки!");
+    console.log("🔴 [ПОКУПКА] Код ошибки:", result?.error);
+    console.log("🔴 [ПОКУПКА] Полный ответ:", result);
+    
+    if (result?.error === 'LIMIT_REACHED') {
+      showToast(`❌ Лимит: макс. ${miner.maxQuantity} шт. ${miner.name}`, 'error');
+    } else if (result?.error === 'INSUFFICIENT_TON') {
+      showToast(`❌ Не хватает TON. Нужно: ${miner.price} TON`, 'error');
+    } else if (result?.error === 'INSUFFICIENT_GPU') {
+      showToast(`❌ Не хватает GPU. Нужно: ${miner.price} GPU`, 'error');
+    } else if (result?.error === 'TOO_FAST') {
+      showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
+    } else {
+      showToast("❌ Ошибка при покупке", 'error');
+    }
   }
-             }
+}
 
 function renderMinerCard(minerId) {
   const card = document.getElementById(`card_${minerId}`);

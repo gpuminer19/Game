@@ -884,15 +884,33 @@ function renderMinerCard(minerId) {
   
   let priceText = '';
   let canBuy = true;
+  let buyButtonText = '';
   
   if (miner.isReferral) {
-    const activeCount = playerData.invitedFriends ? playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= miner.requiredEarned).length : 0;
+    // Подсчёт активных друзей (заработали >= 30 GPU)
+    const activeCount = playerData.invitedFriends ? playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
     canBuy = activeCount >= miner.requiredActive;
-    priceText = canBuy ? '🎁 Бесплатно!' : `🔒 ${activeCount}/${miner.requiredActive}`;
+    
+    if (canBuy) {
+      buyButtonText = '🎁 ПОЛУЧИТЬ';
+    } else {
+      buyButtonText = `🔒 ${activeCount}/${miner.requiredActive} друзей`;
+    }
+    priceText = '';
   } else if (miner.priceCurrency === 'gpu') {
     priceText = `${miner.price} <img src="gpu.png" class="icon-img-small">`;
+    buyButtonText = `Купить за ${priceText}`;
   } else {
     priceText = `${miner.price} <img src="ton.png" class="icon-img-small">`;
+    buyButtonText = `Купить за ${priceText}`;
+  }
+  
+  // Специальное условие для реферальных майнеров
+  let conditionHtml = '';
+  if (miner.isReferral) {
+    conditionHtml = `<div style="font-size: 8px; color: #FFB347; margin-top: 4px;">
+      ⭐ Требуется: ${miner.requiredActive} приглашённых друзей (каждый должен заработать ≥30 GPU)
+    </div>`;
   }
   
   card.innerHTML = `
@@ -900,19 +918,20 @@ function renderMinerCard(minerId) {
     <div class="card-info">
       <h3>
         ${miner.name} <span class="quantity-badge">×${quantity}</span>
-        ${miner.isReferral ? '<span class="referral-badge">🎁 Реферальный</span>' : ''}
+        ${miner.isReferral ? '<span class="referral-badge">🎁 РЕФЕРАЛЬНЫЙ</span>' : ''}
         ${miner.maxQuantity ? `<span class="limit-badge">Макс ${miner.maxQuantity}</span>` : ''}
       </h3>
       <div class="rewards-info">
         <span>+${miner.tonPerDay} <img src="ton.png" class="icon-img-small">/день</span>
         <span>+${miner.gpuPerDay} <img src="gpu.png" class="icon-img-small">/день</span>
       </div>
+      ${conditionHtml}
       <div class="button-group">
         <button class="buy-btn" data-miner="${minerId}" ${(isLimitReached || (!canBuy && miner.isReferral)) ? 'disabled' : ''}>
-          ${isLimitReached ? '📦 Лимит' : `Купить за ${priceText}`}
+          ${isLimitReached ? '📦 ЛИМИТ' : buyButtonText}
         </button>
       </div>
-      ${quantity > 0 ? `<div class="mining-rate">⚡ ${quantity} шт.</div>` : ''}
+      ${quantity > 0 ? `<div class="mining-rate">⚡ ${quantity} шт. в работе</div>` : ''}
     </div>
   `;
   const btn = card.querySelector('.buy-btn');

@@ -696,7 +696,7 @@ function initMinerQuantities() {
 
 function updateUI() {
   document.getElementById("ton").innerText = playerData.ton.toFixed(4);
-  document.getElementById("gpuBalance").innerText = playerData.gpuTokens.toFixed(2);
+  document.getElementById("gpuBalance").innerText = playerData.gpuTokens.toFixed(4);
   document.getElementById("friendCount").innerText = playerData.friends;
 }
 
@@ -769,7 +769,7 @@ function getTotalMiningRates() {
 function updateMiningRateDisplay() {
   const { totalTonPerDay, totalGpuPerDay } = getTotalMiningRates();
   document.getElementById("miningRateTon").innerHTML = `+${totalTonPerDay.toFixed(4)} TON/день`;
-  document.getElementById("miningRateGpu").innerHTML = `+${totalGpuPerDay.toFixed(2)} GPU/день`;
+  document.getElementById("miningRateGpu").innerHTML = `+${totalGpuPerDay.toFixed(4)} GPU/день`;
 }
 
 function startClientMining() {
@@ -788,7 +788,7 @@ function startClientMining() {
       accumulatedTon += earnedTon;
       accumulatedGpu += earnedGpu;
       document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(4);
-      document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(2);
+      document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(4);
     }
     lastMiningTimestamp = now;
   }, 1000);

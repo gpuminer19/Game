@@ -626,38 +626,82 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
 const API_URL = "https://tst-production-c55e.up.railway.app/api/tg";
 const BOT_USERNAME = "Minegpubot";
 
-// ========== УВЕДОМЛЕНИЯ ==========
+// ========== ПОЛНОЕ ЛОГИРОВАНИЕ ==========
+let allLogs = [];
+let logIndex = 0;
+
+function addLog(message, type = 'INFO', data = null) {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+        id: ++logIndex,
+        timestamp,
+        type,
+        message,
+        data: data ? (typeof data === 'object' ? JSON.parse(JSON.stringify(data)) : data) : null
+    };
+    allLogs.push(logEntry);
+    
+    // Ограничиваем количество логов в памяти
+    if (allLogs.length > 200) allLogs.shift();
+    
+    // Выводим в консоль
+    const consoleMsg = `[${timestamp.slice(11,19)}] [${type}] ${message}`;
+    if (type === 'ERROR') console.error(consoleMsg, data || '');
+    else if (type === 'WARN') console.warn(consoleMsg, data || '');
+    else console.log(consoleMsg, data || '');
+    
+    // Сохраняем в localStorage
+    try {
+        localStorage.setItem('game_logs', JSON.stringify(allLogs.slice(-50)));
+    } catch(e) {}
+}
+
+function showAllLogs() {
+    const logsStr = allLogs.map(l => `[${l.timestamp.slice(11,19)}] [${l.type}] ${l.message}${l.data ? ' | ' + JSON.stringify(l.data).slice(0,100) : ''}`).join('\n');
+    alert(`📋 ПОСЛЕДНИЕ ЛОГИ (${allLogs.length} шт):\n\n${logsStr || 'Нет логов'}\n\nПолные логи в консоли (F12)`);
+    addLog('Показаны логи через alert', 'INFO');
+}
+
+// Создаём плавающую кнопку для просмотра логов
+setTimeout(() => {
+    const logBtn = document.createElement('button');
+    logBtn.textContent = '📋 ЛОГИ';
+    logBtn.style.position = 'fixed';
+    logBtn.style.bottom = '140px';
+    logBtn.style.right = '10px';
+    logBtn.style.zIndex = '9999';
+    logBtn.style.background = '#FF8C00';
+    logBtn.style.border = 'none';
+    logBtn.style.borderRadius = '20px';
+    logBtn.style.padding = '8px 12px';
+    logBtn.style.fontSize = '12px';
+    logBtn.style.fontWeight = 'bold';
+    logBtn.style.color = '#000';
+    logBtn.onclick = showAllLogs;
+    document.body.appendChild(logBtn);
+    addLog('🔘 Кнопка логов создана', 'INFO');
+}, 1000);
+
 function showToast(message, type = 'success') {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = `toast toast-${type}`;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2000);
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast toast-${type}`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+    addLog(`🔔 Тоаст: ${message}`, type === 'error' ? 'ERROR' : 'INFO');
 }
 
 // ========== ДАННЫЕ МАЙНЕРОВ ==========
 const gpuTemplates = [
-  { id: "basic", name: "Basic Miner", price: 40, priceCurrency: "gpu", maxQuantity: 30,
-    tonPerDay: 0.01, gpuPerDay: 15, image: "basicminer.png", isReferral: false },
-  { id: "normal", name: "Normal Miner", price: 2, priceCurrency: "ton", maxQuantity: null,
-    tonPerDay: 0.02, gpuPerDay: 15, image: "normalminer.png", isReferral: false },
-  { id: "pro", name: "Pro Miner", price: 10, priceCurrency: "ton", maxQuantity: null,
-    tonPerDay: 0.1, gpuPerDay: 75, image: "prominer.png", isReferral: false },
-  { id: "ultra", name: "Ultra Miner", price: 50, priceCurrency: "ton", maxQuantity: null,
-    tonPerDay: 0.6, gpuPerDay: 380, image: "ultraminer.png", isReferral: false },
-  { id: "legendary", name: "Legendary Miner", price: 100, priceCurrency: "ton", maxQuantity: null,
-    tonPerDay: 1.4, gpuPerDay: 780, image: "legendaryminer.png", isReferral: false },
-  { id: "minex", name: "Minex", price: 500, priceCurrency: "ton", maxQuantity: null,
-    tonPerDay: 7, gpuPerDay: 1800, image: "xminer.png", isReferral: false },
-  { id: "friend", name: "Friend Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
-    tonPerDay: 0.1, gpuPerDay: 15, image: "friendminer.png", 
-    isReferral: true, requiredActive: 10, requiredEarned: 30 },
-  { id: "bro", name: "Bro Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
-    tonPerDay: 0.5, gpuPerDay: 75, image: "brominer.png", 
-    isReferral: true, requiredActive: 50, requiredEarned: 30 },
-  { id: "nexus", name: "Nexus Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
-    tonPerDay: 1.5, gpuPerDay: 200, image: "nexusminer.png", 
-    isReferral: true, requiredActive: 150, requiredEarned: 30 }
+  { id: "basic", name: "Basic Miner", price: 40, priceCurrency: "gpu", maxQuantity: 30, tonPerDay: 0.01, gpuPerDay: 15, image: "basicminer.png", isReferral: false },
+  { id: "normal", name: "Normal Miner", price: 2, priceCurrency: "ton", maxQuantity: null, tonPerDay: 0.02, gpuPerDay: 15, image: "normalminer.png", isReferral: false },
+  { id: "pro", name: "Pro Miner", price: 10, priceCurrency: "ton", maxQuantity: null, tonPerDay: 0.1, gpuPerDay: 75, image: "prominer.png", isReferral: false },
+  { id: "ultra", name: "Ultra Miner", price: 50, priceCurrency: "ton", maxQuantity: null, tonPerDay: 0.6, gpuPerDay: 380, image: "ultraminer.png", isReferral: false },
+  { id: "legendary", name: "Legendary Miner", price: 100, priceCurrency: "ton", maxQuantity: null, tonPerDay: 1.4, gpuPerDay: 780, image: "legendaryminer.png", isReferral: false },
+  { id: "minex", name: "Minex", price: 500, priceCurrency: "ton", maxQuantity: null, tonPerDay: 7, gpuPerDay: 1800, image: "xminer.png", isReferral: false },
+  { id: "friend", name: "Friend Miner", price: 0, priceCurrency: "ref", maxQuantity: null, tonPerDay: 0.1, gpuPerDay: 15, image: "friendminer.png", isReferral: true, requiredActive: 10, requiredEarned: 30 },
+  { id: "bro", name: "Bro Miner", price: 0, priceCurrency: "ref", maxQuantity: null, tonPerDay: 0.5, gpuPerDay: 75, image: "brominer.png", isReferral: true, requiredActive: 50, requiredEarned: 30 },
+  { id: "nexus", name: "Nexus Miner", price: 0, priceCurrency: "ref", maxQuantity: null, tonPerDay: 1.5, gpuPerDay: 200, image: "nexusminer.png", isReferral: true, requiredActive: 150, requiredEarned: 30 }
 ];
 
 const EXCHANGE_RATE = 0.001;
@@ -681,23 +725,21 @@ let accumulatedTon = 0;
 let accumulatedGpu = 0;
 let lastMiningTimestamp = Date.now();
 
-// ========== ДЛЯ НОВОЙ ЗАГРУЗКИ ==========
-const loadingPercentageEl = document.getElementById('loadingPercentage');
-const loaderFillEl = document.getElementById('loaderFill');
-const loadingStatusTextEl = document.getElementById('loadingStatusText');
+addLog(`🚀 Инициализация приложения`, 'INFO', { userId, userName: user?.first_name });
 
-// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 function initMinerQuantities() {
   for (const miner of gpuTemplates) {
     if (minerQuantities[miner.id] === undefined) minerQuantities[miner.id] = 0;
   }
   if (minerQuantities["basic"] === 0) minerQuantities["basic"] = 1;
+  addLog(`📊 Инициализированы количества майнеров`, 'DEBUG', minerQuantities);
 }
 
 function updateUI() {
   document.getElementById("ton").innerText = playerData.ton.toFixed(5);
   document.getElementById("gpuBalance").innerText = playerData.gpuTokens.toFixed(5);
   document.getElementById("friendCount").innerText = playerData.friends;
+  addLog(`🖥️ UI обновлён: TON=${playerData.ton.toFixed(5)}, GPU=${playerData.gpuTokens.toFixed(5)}`, 'DEBUG');
 }
 
 function formatDate(date) { return new Date(date).toLocaleString(); }
@@ -796,6 +838,7 @@ function startClientMining() {
 
 // ========== СИНХРОНИЗАЦИЯ ==========
 async function syncWithServer() {
+  addLog(`🔄 Синхронизация с сервером...`, 'INFO');
   const result = await apiRequest("register", {});
   if (result?.success && result.data) {
     playerData.ton = result.data.ton;
@@ -812,13 +855,16 @@ async function syncWithServer() {
     
     updateUI();
     renderHistory();
+    addLog(`✅ Синхронизация завершена: TON=${playerData.ton}, GPU=${playerData.gpuTokens}`, 'INFO');
     return true;
   }
+  addLog(`⚠️ Синхронизация не удалась`, 'WARN', result);
   return false;
 }
 
 // ========== СБОР НАКОПЛЕННОГО ==========
 async function claimAccumulatedReward() {
+  addLog(`🎁 Запрос на сбор накопленного`, 'INFO');
   const result = await apiRequest("claim", {});
   
   if (result?.success) {
@@ -834,53 +880,119 @@ async function claimAccumulatedReward() {
       await syncWithServer();
     }
     showToast("🎉 Награда собрана!", 'success');
+    addLog(`✅ Награда собрана`, 'INFO');
   } else if (result?.error === 'NOTHING_TO_CLAIM') {
     showToast("Накоплений пока нет! Купите майнеры и подождите.", 'error');
   } else if (result?.error === 'TOO_FAST') {
     showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
   } else {
     showToast("❌ Ошибка при сборе награды", 'error');
+    addLog(`❌ Ошибка сбора: ${result?.error}`, 'ERROR');
   }
 }
 
-// ========== ПОКУПКА МАЙНЕРОВ ==========
+// ========== ПОКУПКА МАЙНЕРОВ С ПОЛНЫМ ЛОГИРОВАНИЕМ ==========
 async function buyMiner(minerId) {
-  const miner = gpuTemplates.find(m => m.id === minerId);
-  if (!miner) return;
-  
-  const result = await apiRequest("buy", { minerId, quantity: 1 });
-  
-  if (result?.success) {
-    // ✅ ИСПРАВЛЕНО: данные приходят прямо в result
-    playerData.ton = result.ton;
-    playerData.gpuTokens = result.gpu;
-    minerQuantities = result.minerQuantities;
+    addLog(`🛒 НАЧАЛО ПОКУПКИ майнера: ${minerId}`, 'INFO');
     
-    // Обновляем количество для купленного майнера
-    if (minerQuantities[minerId] !== undefined) {
-      showToast(`✅ +1 ${miner.name}!`, 'success');
+    const miner = gpuTemplates.find(m => m.id === minerId);
+    if (!miner) {
+        addLog(`❌ Майнер не найден: ${minerId}`, 'ERROR');
+        showToast("❌ Майнер не найден", 'error');
+        return;
     }
     
-    renderAllCards();
-    updateMiningRateDisplay();
-    updateUI();
+    addLog(`📦 Данные майнера:`, 'DEBUG', { name: miner.name, price: miner.price, currency: miner.priceCurrency });
+    addLog(`💰 Баланс ДО покупки: TON=${playerData.ton}, GPU=${playerData.gpuTokens}`, 'INFO');
+    addLog(`📊 Количество майнеров ДО: ${minerId}=${minerQuantities[minerId] || 0}`, 'DEBUG');
     
-    // Дополнительная синхронизация для уверенности
-    setTimeout(() => syncWithServer(), 500);
-  } else if (result?.error === 'LIMIT_REACHED') {
-    showToast(`❌ Вы можете купить не более ${miner.maxQuantity} шт. ${miner.name}`, 'error');
-  } else if (result?.error === 'INSUFFICIENT_TON') {
-    showToast(`❌ Недостаточно TON. Нужно: ${miner.price} TON`, 'error');
-  } else if (result?.error === 'INSUFFICIENT_GPU') {
-    showToast(`❌ Недостаточно GPU. Нужно: ${miner.price} GPU`, 'error');
-  } else if (result?.error === 'TOO_FAST') {
-    showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
-  } else {
-    console.error("Buy error:", result);
-    showToast("❌ Ошибка при покупке", 'error');
-    // На всякий случай синхронизируемся с сервером
-    await syncWithServer();
-  }
+    const result = await apiRequest("buy", { minerId, quantity: 1 });
+    
+    addLog(`📡 РЕЗУЛЬТАТ ОТ СЕРВЕРА:`, 'INFO', result);
+    
+    if (!result) {
+        addLog(`❌ Сервер вернул null/undefined`, 'ERROR');
+        showToast("❌ Нет ответа от сервера", 'error');
+        return;
+    }
+    
+    if (result.success) {
+        let newTon, newGpu, newQuantities;
+        
+        addLog(`🔍 Анализ структуры ответа...`, 'DEBUG');
+        
+        if (result.data) {
+            addLog(`📁 Данные найдены в result.data`, 'DEBUG', result.data);
+            newTon = result.data.ton;
+            newGpu = result.data.gpu;
+            newQuantities = result.data.minerQuantities;
+        } else if (result.ton !== undefined) {
+            addLog(`📁 Данные найдены прямо в result`, 'DEBUG', { ton: result.ton, gpu: result.gpu });
+            newTon = result.ton;
+            newGpu = result.gpu;
+            newQuantities = result.minerQuantities;
+        } else {
+            addLog(`⚠️ Данные не найдены ни в result.data, ни в result`, 'WARN', Object.keys(result));
+            newTon = playerData.ton;
+            newGpu = playerData.gpuTokens;
+            newQuantities = minerQuantities;
+        }
+        
+        const oldTon = playerData.ton;
+        const oldGpu = playerData.gpuTokens;
+        const oldQty = minerQuantities[minerId] || 0;
+        
+        playerData.ton = newTon;
+        playerData.gpuTokens = newGpu;
+        minerQuantities = newQuantities;
+        
+        const newQty = minerQuantities[minerId] || 0;
+        
+        addLog(`✅ ПОКУПКА УСПЕШНА!`, 'INFO');
+        addLog(`💰 TON: ${oldTon.toFixed(5)} → ${playerData.ton.toFixed(5)} (изменение: ${(playerData.ton - oldTon).toFixed(5)})`, 'INFO');
+        addLog(`💎 GPU: ${oldGpu.toFixed(5)} → ${playerData.gpuTokens.toFixed(5)} (изменение: ${(playerData.gpuTokens - oldGpu).toFixed(5)})`, 'INFO');
+        addLog(`📊 Майнер ${minerId}: ${oldQty} → ${newQty}`, 'INFO');
+        addLog(`📋 Полный minerQuantities:`, 'DEBUG', minerQuantities);
+        
+        updateUI();
+        renderAllCards();
+        updateMiningRateDisplay();
+        
+        showToast(`✅ +1 ${miner.name}!`, 'success');
+        
+        const debugState = {
+            timestamp: Date.now(),
+            userId: userId,
+            ton: playerData.ton,
+            gpu: playerData.gpuTokens,
+            minerQuantities: minerQuantities,
+            minerId: minerId
+        };
+        localStorage.setItem('last_buy_state', JSON.stringify(debugState));
+        addLog(`💾 Состояние сохранено в localStorage`, 'DEBUG', debugState);
+        
+    } else {
+        addLog(`❌ ОШИБКА ПОКУПКИ: ${result.error || 'Неизвестная ошибка'}`, 'ERROR', result);
+        
+        switch(result.error) {
+            case 'LIMIT_REACHED':
+                showToast(`❌ Лимит ${miner.maxQuantity} шт. ${miner.name}`, 'error');
+                break;
+            case 'INSUFFICIENT_TON':
+                showToast(`❌ Недостаточно TON. Нужно: ${miner.price} TON`, 'error');
+                break;
+            case 'INSUFFICIENT_GPU':
+                showToast(`❌ Недостаточно GPU. Нужно: ${miner.price} GPU`, 'error');
+                break;
+            default:
+                showToast(`❌ Ошибка: ${result.error || 'Неизвестная'}`, 'error');
+        }
+        
+        addLog(`🔄 Запрашиваю синхронизацию...`, 'INFO');
+        await syncWithServer();
+    }
+    
+    addLog(`🏁 ЗАВЕРШЕНИЕ ПОКУПКИ ${minerId}`, 'INFO');
 }
 
 function renderMinerCard(minerId) {
@@ -895,7 +1007,6 @@ function renderMinerCard(minerId) {
   let buyButtonText = '';
   
   if (miner.isReferral) {
-    // Подсчёт активных друзей (заработали >= 30 GPU)
     const activeCount = playerData.invitedFriends ? playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
     canBuy = activeCount >= miner.requiredActive;
     
@@ -913,7 +1024,6 @@ function renderMinerCard(minerId) {
     buyButtonText = `Купить за ${priceText}`;
   }
   
-  // Специальное условие для реферальных майнеров
   let conditionHtml = '';
   if (miner.isReferral) {
     conditionHtml = `<div style="font-size: 8px; color: #FFB347; margin-top: 4px;">
@@ -947,6 +1057,7 @@ function renderMinerCard(minerId) {
 }
 
 function renderAllCards() {
+  addLog(`🔄 Рендер всех карточек майнеров`, 'DEBUG');
   for (const miner of gpuTemplates) renderMinerCard(miner.id);
 }
 
@@ -961,10 +1072,13 @@ function initGrid() {
     grid.appendChild(card);
     renderMinerCard(miner.id);
   }
+  addLog(`📋 Сетка майнеров инициализирована`, 'INFO');
 }
 
 // ========== API ==========
 async function apiRequest(action, additionalData = {}) {
+  addLog(`🌐 API запрос: ${action}`, 'INFO', { action, additionalData });
+  
   try {
     const response = await fetch(API_URL, {
       method: "POST",
@@ -974,19 +1088,38 @@ async function apiRequest(action, additionalData = {}) {
       },
       body: JSON.stringify({ action, user_id: userId.toString(), name: user?.first_name || "Игрок", ...additionalData })
     });
+    
+    addLog(`📡 API ответ (статус): ${response.status}`, 'DEBUG');
     const result = await response.json();
-    if (result.error === 'BANNED') { showToast(result.message || "❌ Аккаунт заблокирован", 'error'); return null; }
-    if (result.error === 'USER_ID_MISMATCH') { showToast("❌ Ошибка авторизации", 'error'); return null; }
-    if (result.error === 'TOO_MANY_REQUESTS') { showToast("⚠️ Слишком много запросов. Подождите.", 'error'); return null; }
-    if (result.error === 'CLAIM_COOLDOWN') { showToast("⚠️ Собирать награду можно не чаще 1 раза в 30 секунд", 'error'); return null; }
+    addLog(`📦 API результат для ${action}:`, 'DEBUG', result);
+    
+    if (result.error === 'BANNED') { 
+      showToast(result.message || "❌ Аккаунт заблокирован", 'error'); 
+      return null; 
+    }
+    if (result.error === 'USER_ID_MISMATCH') { 
+      showToast("❌ Ошибка авторизации", 'error'); 
+      return null; 
+    }
+    if (result.error === 'TOO_MANY_REQUESTS') { 
+      showToast("⚠️ Слишком много запросов. Подождите.", 'error'); 
+      return null; 
+    }
+    if (result.error === 'CLAIM_COOLDOWN') { 
+      showToast("⚠️ Собирать награду можно не чаще 1 раза в 30 секунд", 'error'); 
+      return null; 
+    }
     return result;
-  } catch (error) { console.error(error); return null; }
+  } catch (error) { 
+    addLog(`💥 Ошибка API: ${error.message}`, 'ERROR', error);
+    return null; 
+  }
 }
 
 async function loadUserData(referrerId = null) {
-  console.log('Sending referrer_id to server:', referrerId);
+  addLog(`📥 Загрузка данных пользователя...`, 'INFO');
   const result = await apiRequest("register", { referrer_id: referrerId });
-  console.log('Server response:', result);
+  
   if (result?.success && result.data) {
     playerData = { 
       ton: result.data.ton, 
@@ -1011,8 +1144,10 @@ async function loadUserData(referrerId = null) {
     renderAllCards();
     updateMiningRateDisplay();
     lastMiningTimestamp = Date.now();
+    addLog(`✅ Данные загружены: TON=${playerData.ton}, GPU=${playerData.gpuTokens}`, 'INFO');
     return true;
   }
+  addLog(`❌ Не удалось загрузить данные`, 'ERROR', result);
   return false;
 }
 
@@ -1124,12 +1259,15 @@ function initExchange() {
           sellInput.value = "";
           sellEstimate.innerHTML = `Вы получите: 0 <img src="ton.png" class="icon-img-small">`;
           showToast(`✅ Продано ${amount} GPU за ${result.data.tonReceived.toFixed(4)} TON`, 'success');
+          addLog(`✅ Продажа GPU: ${amount} → ${result.data.tonReceived} TON`, 'INFO');
         } else {
           showToast(result.error || "Ошибка при продаже", 'error');
+          addLog(`❌ Ошибка продажи: ${result.error}`, 'ERROR');
         }
       } catch (error) {
         console.error("Exchange error:", error);
         showToast("❌ Ошибка сервера", 'error');
+        addLog(`💥 Ошибка обмена: ${error.message}`, 'ERROR');
       } finally {
         sellBtn.disabled = false;
         sellBtn.textContent = "Продать";
@@ -1169,6 +1307,7 @@ async function simulateLoading() {
 
 // ========== НАВИГАЦИЯ ==========
 function openTab(id, btn) {
+  addLog(`🔄 Переход на вкладку: ${id}`, 'DEBUG');
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
   document.getElementById(id).classList.add("active");
   document.querySelectorAll(".tg-nav-btn").forEach(b => b.classList.remove("active"));
@@ -1270,15 +1409,21 @@ async function init() {
     showToast("Ссылка скопирована!", 'success');
   };
   
+  const loadingElement = document.getElementById("loading");
+  const loadingPercentageEl = document.getElementById("loadingPercentage");
+  const loaderFillEl = document.getElementById("loaderFill");
+  const loadingStatusTextEl = document.getElementById("loadingStatusText");
+  
   await simulateLoading();
 
-  const loadingElement = document.getElementById("loading");
   loadingElement.style.transition = "opacity 0.5s ease";
   loadingElement.style.opacity = "0";
 
   setTimeout(() => {
       loadingElement.style.display = "none";
       document.getElementById("app").style.display = "block";
+      addLog(`✅ Приложение загружено и готово к работе!`, 'INFO');
+      addLog(`📊 ФИНАЛЬНОЕ СОСТОЯНИЕ: TON=${playerData.ton}, GPU=${playerData.gpuTokens}, Майнеры:`, 'INFO', minerQuantities);
   }, 500);
 }
 

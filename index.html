@@ -1151,7 +1151,7 @@ async function loadTasksGame() {
       let statusHtml = '', buttonHtml = '';
       if (task.completed) statusHtml = '<div class="task-completed">✅ Выполнено</div>';
       else if (task.pending) statusHtml = '<div class="task-pending">⏳ Проверка</div>';
-      else buttonHtml = `<button class="task-btn" onclick="completeTask('${task.id}')">✅ Выполнить</button>`;
+      else buttonHtml = `<button class="task-btn" onclick="completeTask('${task.id}', '${task.taskUrl}')">✅ Выполнить</button>`;
       return `<div class="card task-card"><div class="card-info"><h3>${task.title}</h3><div class="task-desc">${task.description}</div><div class="rewards-info">+${task.rewardTon} TON | +${task.rewardGpu} GPU</div>${statusHtml}${buttonHtml}</div></div>`;
     }).join('');
   } else {
@@ -1159,26 +1159,26 @@ async function loadTasksGame() {
   }
 }
 
-async function completeTask(taskId) {
-    // 1. Получаем список заданий, чтобы найти ссылку
-    const result = await apiRequest("tasks/list", {});
-    let taskUrl = null;
-    
-    if (result?.success && result.tasks) {
-        const task = result.tasks.find(t => t.id === taskId);
-        if (task && task.taskUrl && task.taskUrl.trim() !== "") {
-            taskUrl = task.taskUrl;
-        }
-    }
-    
-    // 2. Если есть ссылка - открываем в новой вкладке
-    if (taskUrl) {
+async function completeTask(taskId, taskUrl) {
+    // 1. Всегда открываем ссылку в новой вкладке, если она есть
+    if (taskUrl && taskUrl.trim() !== "") {
         window.open(taskUrl, '_blank');
-        showToast("🔗 Задание открыто! После выполнения нажмите 'Проверить'", 'success');
+        showToast("🔗 Задание открыто! После выполнения нажмите кнопку ещё раз для подтверждения", 'success');
+    } else {
+        // На случай, если у задания нет ссылки
+        showToast("⚠️ Для этого задания нет ссылки.", 'error');
     }
     
-    // 3. Отправляем запрос на сервер
-    await apiRequest("tasks/complete", { taskId });
+    // 2. Отправляем запрос на сервер, что задание выполнено
+    const result = await apiRequest("tasks/complete", { taskId });
+    
+    if (result?.success) {
+        showToast("✅ Задание отмечено как выполненное! Ожидайте проверки", 'success');
+    } else {
+        showToast("❌ Ошибка при выполнении задания", 'error');
+    }
+    
+    // 3. Обновляем интерфейс
     await loadTasksGame();
     await syncWithServer();
 }

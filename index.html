@@ -1160,9 +1160,27 @@ async function loadTasksGame() {
 }
 
 async function completeTask(taskId) {
-  await apiRequest("tasks/complete", { taskId });
-  await loadTasksGame();
-  await syncWithServer();
+    // 1. Получаем список заданий, чтобы найти ссылку
+    const result = await apiRequest("tasks/list", {});
+    let taskUrl = null;
+    
+    if (result?.success && result.tasks) {
+        const task = result.tasks.find(t => t.id === taskId);
+        if (task && task.taskUrl && task.taskUrl.trim() !== "") {
+            taskUrl = task.taskUrl;
+        }
+    }
+    
+    // 2. Если есть ссылка - открываем в новой вкладке
+    if (taskUrl) {
+        window.open(taskUrl, '_blank');
+        showToast("🔗 Задание открыто! После выполнения нажмите 'Проверить'", 'success');
+    }
+    
+    // 3. Отправляем запрос на сервер
+    await apiRequest("tasks/complete", { taskId });
+    await loadTasksGame();
+    await syncWithServer();
 }
 
 // ========== ПРОДАЖА GPU ==========

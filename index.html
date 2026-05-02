@@ -961,7 +961,7 @@ async function buyMiner(minerId) {
     } else if (result?.error === 'INSUFFICIENT_TON') {
       showToast(`❌ Не хватает TON. Нужно: ${miner.price} TON`, 'error');
     } else if (result?.error === 'INSUFFICIENT_GPU') {
-      showToast(`❌ Не хватает GPU. Нужно: ${miner.price} GPU`, 'error');
+      showToast(`❌ Не хватает GPU.`, 'error');
     } else if (result?.error === 'TOO_FAST') {
       showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
     } else {

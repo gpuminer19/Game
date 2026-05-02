@@ -992,7 +992,16 @@ function renderMinerCard(minerId) {
       buyButtonText = `🔒 ${activeCount}/${miner.requiredActive} друзей`;
     }
     priceText = '';
-  } else if (miner.priceCurrency === 'gpu') {
+  } 
+  // ========== НОВАЯ ЛОГИКА ДЛЯ BASIC MINER ==========
+  else if (miner.id === 'basic') {
+    // Динамический расчет цены: 40 * (1.5 ^ текущее_количество)
+    const currentQuantity = quantity;
+    const dynamicPrice = 40 * Math.pow(1.5, currentQuantity);
+    priceText = `${dynamicPrice.toFixed(2)} <img src="gpu.png" class="icon-img-small">`;
+    buyButtonText = `Купить за ${priceText}`;
+  }
+  else if (miner.priceCurrency === 'gpu') {
     priceText = `${miner.price} <img src="gpu.png" class="icon-img-small">`;
     buyButtonText = `Купить за ${priceText}`;
   } else {

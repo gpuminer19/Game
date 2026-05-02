@@ -997,7 +997,7 @@ function renderMinerCard(minerId) {
   else if (miner.id === 'basic') {
     // Динамический расчет цены: 40 * (1.5 ^ текущее_количество)
     const currentQuantity = quantity;
-    const dynamicPrice = 40 * Math.pow(1.5, currentQuantity);
+    const dynamicPrice = 40 * Math.pow(1.15, currentQuantity);
     priceText = `${dynamicPrice.toFixed(2)} <img src="gpu.png" class="icon-img-small">`;
     buyButtonText = `Купить за ${priceText}`;
   }

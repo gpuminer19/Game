@@ -982,8 +982,15 @@ function renderMinerCard(minerId) {
   let buyButtonText = '';
   
   if (miner.isReferral) {
+  // Если майнер уже есть (выдали через админку или получили ранее)
+  if (quantity > 0) {
+    canBuy = false;
+    buyButtonText = '✅ ПОЛУЧЕНО';
+    priceText = '';
+  } else {
     // Подсчёт активных друзей (заработали >= 30 GPU)
-    const activeCount = playerData.invitedFriends ? playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
+    const activeCount = playerData.invitedFriends ? 
+      playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
     canBuy = activeCount >= miner.requiredActive;
     
     if (canBuy) {
@@ -992,7 +999,8 @@ function renderMinerCard(minerId) {
       buyButtonText = `🔒 ${activeCount}/${miner.requiredActive} друзей`;
     }
     priceText = '';
-  } 
+  }
+  }
   // ========== НОВАЯ ЛОГИКА ДЛЯ BASIC MINER ==========
   else if (miner.id === 'basic') {
     // Динамический расчет цены: 40 * (1.5 ^ текущее_количество)

@@ -211,12 +211,251 @@ body::before {
 .claim-all-btn { background: linear-gradient(95deg, #008A5C, #00A86B); border: none; font-weight: 700; font-size: 13px; padding: 10px; border-radius: 40px; color: white; width: 100%; cursor: pointer; transition: all 0.15s; }
 .claim-all-btn:active { transform: scale(0.98); }
 
+/* ===== ЭКСКЛЮЗИВНЫЙ БЛОК ЛИМИТИРОВАННЫХ МАЙНЕРОВ - ТЁМНОЕ ЗЕРКАЛО ===== */
+.limited-exclusive-section {
+    margin: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, #0a0a0f, #1a1a2e);
+    border-radius: 24px;
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    box-shadow: 0 0 30px rgba(50, 100, 200, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Зеркальный блеск сверху */
+.limited-exclusive-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(100, 150, 255, 0.15), transparent);
+    transform: skewX(-20deg);
+    animation: mirrorShine 8s infinite;
+    pointer-events: none;
+}
+
+@keyframes mirrorShine {
+    0% { left: -100%; }
+    20% { left: 100%; }
+    100% { left: 100%; }
+}
+
+/* Холодное свечение по краям */
+.limited-exclusive-section::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at 30% 40%, rgba(50, 100, 200, 0.1), transparent 70%);
+    border-radius: 24px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.limited-exclusive-section > * {
+    position: relative;
+    z-index: 1;
+}
+
+.limited-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(100, 150, 255, 0.3);
+}
+
+.limited-title {
+    font-size: 18px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #a0b0ff, #5060c0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-shadow: 0 0 10px rgba(80, 100, 200, 0.3);
+    letter-spacing: 1px;
+}
+
+.limited-timer {
+    background: rgba(10, 15, 30, 0.8);
+    backdrop-filter: blur(4px);
+    padding: 6px 12px;
+    border-radius: 40px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #a0b0ff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    font-family: monospace;
+}
+
+.limited-timer i {
+    font-size: 12px;
+    color: #7080d0;
+}
+
+.limited-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Эксклюзивные карточки майнеров */
+.card-limited {
+    background: linear-gradient(135deg, rgba(15, 20, 35, 0.9), rgba(8, 10, 20, 0.95));
+    backdrop-filter: blur(8px);
+    border-radius: 20px;
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid rgba(80, 120, 220, 0.4);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+    position: relative;
+    min-height: 100px;
+}
+
+/* Зеркальный блик на карточке */
+.card-limited::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(135deg, rgba(100, 150, 255, 0.15), transparent);
+    border-radius: 20px 20px 0 0;
+    pointer-events: none;
+}
+
+.card-limited:hover {
+    transform: translateY(-3px);
+    border-color: rgba(100, 150, 255, 0.7);
+    box-shadow: 0 10px 25px rgba(50, 100, 200, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.card-limited .gpu-img {
+    width: 75px;
+    height: 75px;
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 16px;
+    padding: 6px;
+    border: 1px solid rgba(80, 120, 220, 0.4);
+}
+
+.card-limited .card-info h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    color: #b0c0ff;
+}
+
+.limited-badge {
+    background: linear-gradient(135deg, #1a2a5a, #0f1a3a);
+    font-size: 7px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    color: #a0b0ff;
+    font-weight: bold;
+    border: 1px solid rgba(80, 120, 220, 0.4);
+}
+
+.time-badge {
+    background: rgba(20, 30, 60, 0.6);
+    font-size: 7px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    color: #8090d0;
+    border: 1px solid rgba(80, 120, 220, 0.3);
+}
+
+.exclusive-btn {
+    background: linear-gradient(135deg, #1a2a5a, #0f1a3a);
+    border: 1px solid rgba(80, 120, 220, 0.5);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 8px 12px;
+    border-radius: 40px;
+    color: #c0d0ff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.exclusive-btn:hover {
+    background: linear-gradient(135deg, #253a7a, #1a2a5a);
+    border-color: rgba(100, 150, 255, 0.7);
+    color: #ffffff;
+    transform: scale(1.02);
+}
+
+.exclusive-btn:active {
+    transform: scale(0.98);
+}
+
+.exclusive-btn:disabled {
+    opacity: 0.4;
+    transform: none;
+    cursor: not-allowed;
+}
+
+.rewards-info {
+    display: flex;
+    gap: 10px;
+    font-size: 9px;
+    color: #8090c0;
+    margin: 6px 0;
+}
+
+.quantity-badge {
+    background: rgba(80, 120, 220, 0.2);
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    color: #a0b0ff;
+    border: 1px solid rgba(80, 120, 220, 0.3);
+}
+
+.mining-rate {
+    font-size: 9px;
+    color: #7080b0;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Обычные карточки */
 .grid { padding: 12px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 80px; }
 .card { background: rgba(12, 18, 32, 0.85); backdrop-filter: blur(12px); border-radius: 20px; padding: 10px; display: flex; gap: 10px; align-items: center; border: 1px solid rgba(0, 212, 255, 0.2); }
 .gpu-img { width: 75px; height: 75px; object-fit: contain; background: rgba(0, 0, 0, 0.4); border-radius: 16px; padding: 6px; }
 .card-info { flex: 1; }
 .card-info h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
-.quantity-badge { background: rgba(0, 212, 255, 0.3); padding: 2px 6px; border-radius: 20px; font-size: 10px; color: #00D4FF; }
 .rewards-info { display: flex; gap: 8px; font-size: 9px; color: #A0B4E0; margin-bottom: 5px; flex-wrap: wrap; align-items: center; }
 .button-group { display: flex; gap: 6px; margin-top: 5px; }
 button { background: linear-gradient(95deg, #1A2A5E, #0F1A3A); border: none; font-weight: 600; font-size: 11px; padding: 6px 10px; border-radius: 40px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.15s; flex: 1; }
@@ -491,6 +730,23 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
       </div>
       <button class="claim-all-btn" id="claimAllBtn">ЗАБРАТЬ НАКОПЛЕННОЕ</button>
     </div>
+    
+    <!-- ЭКСКЛЮЗИВНЫЙ БЛОК ЛИМИТИРОВАННЫХ МАЙНЕРОВ -->
+    <div class="limited-exclusive-section" id="limitedSection">
+      <div class="limited-header">
+        <div class="limited-title">
+          <i class="fa-solid fa-crown"></i>
+          LIMITED EDITION
+          <i class="fa-solid fa-gem"></i>
+        </div>
+        <div class="limited-timer" id="limitedTimer">
+          <i class="fa-regular fa-clock"></i>
+          <span id="timerText">47:59:59</span>
+        </div>
+      </div>
+      <div class="limited-grid" id="limitedGrid"></div>
+    </div>
+    
     <div class="grid" id="grid"></div>
   </div>
 
@@ -623,7 +879,7 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
 
 <script>
 // ========== НАСТРОЙКИ ==========
-const API_URL = "https://tst-production-c55e.up.railway.app/api/tg";
+const API_URL = "https://ваш-сервер/api/tg";  // ЗАМЕНИТЕ НА ВАШ URL
 const BOT_USERNAME = "Minegpubot";
 
 // ========== УВЕДОМЛЕНИЯ ==========
@@ -636,7 +892,8 @@ function showToast(message, type = 'success') {
 }
 
 // ========== ДАННЫЕ МАЙНЕРОВ ==========
-const gpuTemplates = [
+// Обычные майнеры
+const regularMiners = [
   { id: "basic", name: "Basic Miner", price: 40, priceCurrency: "gpu", maxQuantity: 30,
     tonPerDay: 0.01, gpuPerDay: 15, image: "basicminer.png", isReferral: false },
   { id: "normal", name: "Normal Miner", price: 2, priceCurrency: "ton", maxQuantity: null,
@@ -660,6 +917,45 @@ const gpuTemplates = [
     isReferral: true, requiredActive: 150, requiredEarned: 30 }
 ];
 
+// ЛИМИТИРОВАННЫЕ МАЙНЕРЫ (48 часов)
+const limitedMiners = [
+  { 
+    id: "limited_silver", 
+    name: "🥈 Silver Limited", 
+    price: 10, 
+    priceCurrency: "ton", 
+    tonPerDay: 0.2, 
+    gpuPerDay: 100, 
+    image: "silverminer.png", 
+    isReferral: false,
+    limitedTime: true
+  },
+  { 
+    id: "limited_gold", 
+    name: "🥇 Gold Limited", 
+    price: 60, 
+    priceCurrency: "ton", 
+    tonPerDay: 1.0, 
+    gpuPerDay: 380, 
+    image: "goldminer.png", 
+    isReferral: false,
+    limitedTime: true
+  },
+  { 
+    id: "limited_diamond", 
+    name: "💎 Diamond Limited", 
+    price: 300, 
+    priceCurrency: "ton", 
+    tonPerDay: 6.0, 
+    gpuPerDay: 2000, 
+    image: "diamondminer.png", 
+    isReferral: false,
+    limitedTime: true
+  }
+];
+
+// Объединяем всех майнеров
+const gpuTemplates = [...regularMiners, ...limitedMiners];
 const EXCHANGE_RATE = 0.001;
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
@@ -681,10 +977,30 @@ let accumulatedTon = 0;
 let accumulatedGpu = 0;
 let lastMiningTimestamp = Date.now();
 
+// Время окончания акции (будет получено с сервера)
+let limitedEndTime = null;
+let promoActive = false;
+
 // ========== ДЛЯ НОВОЙ ЗАГРУЗКИ ==========
 const loadingPercentageEl = document.getElementById('loadingPercentage');
 const loaderFillEl = document.getElementById('loaderFill');
 const loadingStatusTextEl = document.getElementById('loadingStatusText');
+
+// ========== ПОЛУЧЕНИЕ СТАТУСА АКЦИИ ==========
+async function fetchPromoStatus() {
+  try {
+    const response = await fetch(`${API_URL.replace('/api/tg', '')}/api/promo/status`);
+    const result = await response.json();
+    if (result.success) {
+      promoActive = result.isActive;
+      limitedEndTime = result.endTime;
+      return true;
+    }
+  } catch (error) {
+    console.error("Ошибка получения статуса акции:", error);
+  }
+  return false;
+}
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
 function initMinerQuantities() {
@@ -853,115 +1169,32 @@ async function buyMiner(minerId) {
     return;
   }
   
-  console.log("🟢 [ПОКУПКА] Данные майнера:", {
-    name: miner.name,
-    price: miner.price,
-    priceCurrency: miner.priceCurrency,
-    currentQuantity: minerQuantities[minerId] || 0
-  });
-  
-  console.log("🟢 [ПОКУПКА] Текущее состояние до запроса:", {
-    ton: playerData.ton,
-    gpu: playerData.gpuTokens,
-    minerQuantities: JSON.parse(JSON.stringify(minerQuantities))
-  });
+  // Проверка времени для лимитированных майнеров
+  if (miner.limitedTime && !promoActive) {
+    showToast(`❌ Акция на ${miner.name} закончилась!`, 'error');
+    return;
+  }
   
   const result = await apiRequest("buy", { minerId, quantity: 1 });
   
-  console.log("🟢 [ПОКУПКА] Ответ от сервера:", JSON.stringify(result, null, 2));
-  
   if (result?.success) {
-    console.log("🟢 [ПОКУПКА] Успешная покупка!");
-    
-    // Логируем старые значения
-    const oldTon = playerData.ton;
-    const oldGpu = playerData.gpuTokens;
-    const oldMiners = JSON.parse(JSON.stringify(minerQuantities));
-    
-    // Обновляем данные
     playerData.ton = result.ton;
     playerData.gpuTokens = result.gpu;
     minerQuantities = result.minerQuantities;
     
-    console.log("🟢 [ПОКУПКА] Изменения:", {
-      ton: { было: oldTon, стало: playerData.ton, разница: (playerData.ton - oldTon).toFixed(5) },
-      gpu: { было: oldGpu, стало: playerData.gpuTokens, разница: (playerData.gpuTokens - oldGpu).toFixed(5) },
-      minerQuantities: {
-        было: oldMiners,
-        стало: minerQuantities,
-        изменения: {
-          [minerId]: { было: oldMiners[minerId] || 0, стало: minerQuantities[minerId] || 0 }
-        }
-      }
-    });
-    
-    // Проверяем, что количество увеличилось
-    if (minerQuantities[minerId] !== undefined) {
-      const newQty = minerQuantities[minerId];
-      const oldQty = oldMiners[minerId] || 0;
-      console.log(`🟢 [ПОКУПКА] Майнер ${miner.name}: ${oldQty} → ${newQty} (+${newQty - oldQty})`);
-      showToast(`✅ +1 ${miner.name}!`, 'success');
-    } else {
-      console.log("🔴 [ПОКУПКА] ВНИМАНИЕ: minerQuantities не содержит", minerId);
-      console.log("🔴 [ПОКУПКА] Доступные майнеры в ответе:", Object.keys(minerQuantities));
-    }
-    
     renderAllCards();
     updateMiningRateDisplay();
     updateUI();
-    
-    console.log("🟢 [ПОКУПКА] Интерфейс обновлен");
-    
-    // Проверка синхронизации
-    console.log("🟢 [ПОКУПКА] Запуск syncWithServer через 500мс для проверки...");
-    setTimeout(async () => {
-      console.log("🟡 [СИНХРОНИЗАЦИЯ] Начало syncWithServer после покупки");
-      const beforeSync = {
-        ton: playerData.ton,
-        gpu: playerData.gpuTokens,
-        miners: JSON.parse(JSON.stringify(minerQuantities))
-      };
-      console.log("🟡 [СИНХРОНИЗАЦИЯ] Состояние до синхронизации:", beforeSync);
-      
-      await syncWithServer();
-      
-      const afterSync = {
-        ton: playerData.ton,
-        gpu: playerData.gpuTokens,
-        miners: JSON.parse(JSON.stringify(minerQuantities))
-      };
-      console.log("🟡 [СИНХРОНИЗАЦИЯ] Состояние после синхронизации:", afterSync);
-      
-      // Сравниваем, не потерялись ли майнеры
-      if (JSON.stringify(beforeSync.miners) !== JSON.stringify(afterSync.miners)) {
-        console.log("🔴 [СИНХРОНИЗАЦИЯ] ВНИМАНИЕ! Данные изменились после синхронизации!");
-        console.log("🔴 [СИНХРОНИЗАЦИЯ] Потеряны майнеры:", {
-          до: beforeSync.miners,
-          после: afterSync.miners,
-          разница_по_minerId_minerId: {
-            [minerId]: {
-              до: beforeSync.miners[minerId] || 0,
-              после: afterSync.miners[minerId] || 0
-            }
-          }
-        });
-        showToast("⚠️ Ошибка синхронизации! Майнеры не сохранились.", 'error');
-      } else {
-        console.log("🟢 [СИНХРОНИЗАЦИЯ] Данные сохранились корректно");
-      }
-    }, 500);
-    
+    showToast(`✅ +1 ${miner.name}!`, 'success');
   } else {
-    console.log("🔴 [ПОКУПКА] Ошибка покупки!");
-    console.log("🔴 [ПОКУПКА] Код ошибки:", result?.error);
-    console.log("🔴 [ПОКУПКА] Полный ответ:", result);
-    
     if (result?.error === 'LIMIT_REACHED') {
-      showToast(`❌ Лимит: макс. ${miner.maxQuantity} шт. ${miner.name}`, 'error');
+      showToast(`❌ Лимит достигнут!`, 'error');
     } else if (result?.error === 'INSUFFICIENT_TON') {
       showToast(`❌ Не хватает TON. Нужно: ${miner.price} TON`, 'error');
     } else if (result?.error === 'INSUFFICIENT_GPU') {
       showToast(`❌ Не хватает GPU.`, 'error');
+    } else if (result?.error === 'PROMO_EXPIRED') {
+      showToast(`❌ Акция на ${miner.name} закончилась!`, 'error');
     } else if (result?.error === 'TOO_FAST') {
       showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
     } else {
@@ -970,101 +1203,152 @@ async function buyMiner(minerId) {
   }
 }
 
-function renderMinerCard(minerId) {
-  const card = document.getElementById(`card_${minerId}`);
-  if (!card) return;
-  const miner = gpuTemplates.find(m => m.id === minerId);
-  const quantity = minerQuantities[miner.id] || 0;
-  const isLimitReached = miner.maxQuantity !== null && quantity >= miner.maxQuantity;
+// ========== ОБНОВЛЕНИЕ ТАЙМЕРА ==========
+function updateLimitedTimer() {
+  const timerElement = document.getElementById('timerText');
+  if (!timerElement) return;
   
-  let priceText = '';
-  let canBuy = true;
-  let buyButtonText = '';
+  if (!limitedEndTime || Date.now() >= limitedEndTime || !promoActive) {
+    timerElement.textContent = "АКЦИЯ ЗАВЕРШЕНА";
+    const section = document.getElementById('limitedSection');
+    if (section) section.style.display = 'none';
+    return;
+  }
   
-  if (miner.isReferral) {
-  // Если майнер уже есть (выдали через админку или получили ранее)
-  if (quantity > 0) {
-    canBuy = false;
-    buyButtonText = '✅ ПОЛУЧЕНО';
-    priceText = '';
-  } else {
-    // Подсчёт активных друзей (заработали >= 30 GPU)
-    const activeCount = playerData.invitedFriends ? 
-      playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
-    canBuy = activeCount >= miner.requiredActive;
+  const remaining = limitedEndTime - Date.now();
+  const hours = Math.floor(remaining / (60 * 60 * 1000));
+  const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
+  const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
+  
+  timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// ========== РЕНДЕР ЛИМИТИРОВАННЫХ МАЙНЕРОВ ==========
+function renderLimitedMiners() {
+  const container = document.getElementById("limitedGrid");
+  if (!container) return;
+  
+  if (!promoActive) {
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:#a0b0ff;">⏰ Акция завершена! Следите за новыми предложениями</div>';
+    return;
+  }
+  
+  container.innerHTML = "";
+  for (const miner of limitedMiners) {
+    const quantity = minerQuantities[miner.id] || 0;
     
-    if (canBuy) {
-      buyButtonText = '🎁 ПОЛУЧИТЬ';
-    } else {
-      buyButtonText = `🔒 ${activeCount}/${miner.requiredActive} друзей`;
+    const card = document.createElement("div");
+    card.className = "card-limited";
+    card.innerHTML = `
+      <img src="${miner.image}" class="gpu-img" onerror="this.src='basicminer.png'">
+      <div class="card-info">
+        <h3>
+          ${miner.name} <span class="quantity-badge">×${quantity}</span>
+          <span class="limited-badge">🔥 48 HOURS ONLY</span>
+          <span class="time-badge"><i class="fa-regular fa-hourglass-half"></i> LIMITED</span>
+        </h3>
+        <div class="rewards-info">
+          <span>💰 +${miner.tonPerDay} TON/день</span>
+          <span>⚡ +${miner.gpuPerDay} GPU/день</span>
+        </div>
+        <div class="button-group">
+          <button class="exclusive-btn" onclick="buyMiner('${miner.id}')">
+            💎 Купить за ${miner.price} TON
+          </button>
+        </div>
+        ${quantity > 0 ? `<div class="mining-rate">⚡ ${quantity} шт. майнят</div>` : ''}
+      </div>
+    `;
+    container.appendChild(card);
+  }
+}
+
+// ========== РЕНДЕР ОБЫЧНЫХ МАЙНЕРОВ ==========
+function renderRegularMiners() {
+  const container = document.getElementById("grid");
+  if (!container) return;
+  
+  container.innerHTML = "";
+  for (const miner of regularMiners) {
+    const quantity = minerQuantities[miner.id] || 0;
+    const isLimitReached = miner.maxQuantity !== null && quantity >= miner.maxQuantity;
+    
+    let priceText = '';
+    let buyButtonText = '';
+    let canBuy = true;
+    
+    if (miner.isReferral) {
+      if (quantity > 0) {
+        canBuy = false;
+        buyButtonText = '✅ ПОЛУЧЕНО';
+        priceText = '';
+      } else {
+        const activeCount = playerData.invitedFriends ? 
+          playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
+        canBuy = activeCount >= miner.requiredActive;
+        if (canBuy) {
+          buyButtonText = '🎁 ПОЛУЧИТЬ';
+        } else {
+          buyButtonText = `🔒 ${activeCount}/${miner.requiredActive} друзей`;
+        }
+        priceText = '';
+      }
     }
-    priceText = '';
-  }
-  }
-  // ========== НОВАЯ ЛОГИКА ДЛЯ BASIC MINER ==========
-  else if (miner.id === 'basic') {
-    // Динамический расчет цены: 40 * (1.5 ^ текущее_количество)
-    const currentQuantity = quantity;
-    const dynamicPrice = 40 * Math.pow(1.15, currentQuantity);
-    priceText = `${dynamicPrice.toFixed(2)} <img src="gpu.png" class="icon-img-small">`;
-    buyButtonText = `Купить за ${priceText}`;
-  }
-  else if (miner.priceCurrency === 'gpu') {
-    priceText = `${miner.price} <img src="gpu.png" class="icon-img-small">`;
-    buyButtonText = `Купить за ${priceText}`;
-  } else {
-    priceText = `${miner.price} <img src="ton.png" class="icon-img-small">`;
-    buyButtonText = `Купить за ${priceText}`;
-  }
-  
-  // Специальное условие для реферальных майнеров
-  let conditionHtml = '';
-  if (miner.isReferral) {
-    conditionHtml = `<div style="font-size: 8px; color: #FFB347; margin-top: 4px;">
-      ⭐ Требуется: ${miner.requiredActive} приглашённых друзей (каждый должен заработать 30 GPU)
-    </div>`;
-  }
-  
-  card.innerHTML = `
-    <img src="${miner.image}" class="gpu-img" onerror="this.src='basicminer.png'">
-    <div class="card-info">
-      <h3>
-        ${miner.name} <span class="quantity-badge">×${quantity}</span>
-        ${miner.isReferral ? '<span class="referral-badge">🎁 РЕФЕРАЛЬНЫЙ</span>' : ''}
-        ${miner.maxQuantity ? `<span class="limit-badge">Макс ${miner.maxQuantity}</span>` : ''}
-      </h3>
-      <div class="rewards-info">
-        <span>+${miner.tonPerDay} <img src="ton.png" class="icon-img-small">/день</span>
-        <span>+${miner.gpuPerDay} <img src="gpu.png" class="icon-img-small">/день</span>
+    else if (miner.id === 'basic') {
+      const currentQuantity = quantity;
+      const dynamicPrice = 40 * Math.pow(1.15, currentQuantity);
+      priceText = `${dynamicPrice.toFixed(2)} <img src="gpu.png" class="icon-img-small">`;
+      buyButtonText = `Купить за ${priceText}`;
+    }
+    else if (miner.priceCurrency === 'gpu') {
+      priceText = `${miner.price} <img src="gpu.png" class="icon-img-small">`;
+      buyButtonText = `Купить за ${priceText}`;
+    } else {
+      priceText = `${miner.price} <img src="ton.png" class="icon-img-small">`;
+      buyButtonText = `Купить за ${priceText}`;
+    }
+    
+    let conditionHtml = '';
+    if (miner.isReferral) {
+      conditionHtml = `<div style="font-size: 8px; color: #FFB347; margin-top: 4px;">
+        ⭐ Требуется: ${miner.requiredActive} приглашённых друзей (каждый должен заработать 30 GPU)
+      </div>`;
+    }
+    
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <img src="${miner.image}" class="gpu-img" onerror="this.src='basicminer.png'">
+      <div class="card-info">
+        <h3>
+          ${miner.name} <span class="quantity-badge">×${quantity}</span>
+          ${miner.isReferral ? '<span class="referral-badge">🎁 РЕФЕРАЛЬНЫЙ</span>' : ''}
+          ${miner.maxQuantity ? `<span class="limit-badge">Макс ${miner.maxQuantity}</span>` : ''}
+        </h3>
+        <div class="rewards-info">
+          <span>+${miner.tonPerDay} <img src="ton.png" class="icon-img-small">/день</span>
+          <span>+${miner.gpuPerDay} <img src="gpu.png" class="icon-img-small">/день</span>
+        </div>
+        ${conditionHtml}
+        <div class="button-group">
+          <button class="buy-btn" ${(isLimitReached || (!canBuy && miner.isReferral)) ? 'disabled' : ''} onclick="buyMiner('${miner.id}')">
+            ${isLimitReached ? '📦 ЛИМИТ' : buyButtonText}
+          </button>
+        </div>
+        ${quantity > 0 ? `<div class="mining-rate">⚡ ${quantity} шт. в работе</div>` : ''}
       </div>
-      ${conditionHtml}
-      <div class="button-group">
-        <button class="buy-btn" data-miner="${minerId}" ${(isLimitReached || (!canBuy && miner.isReferral)) ? 'disabled' : ''}>
-          ${isLimitReached ? '📦 ЛИМИТ' : buyButtonText}
-        </button>
-      </div>
-      ${quantity > 0 ? `<div class="mining-rate">⚡ ${quantity} шт. в работе</div>` : ''}
-    </div>
-  `;
-  const btn = card.querySelector('.buy-btn');
-  if (btn && !btn.disabled && !isLimitReached) btn.onclick = () => buyMiner(minerId);
+    `;
+    container.appendChild(card);
+  }
 }
 
 function renderAllCards() {
-  for (const miner of gpuTemplates) renderMinerCard(miner.id);
+  renderLimitedMiners();
+  renderRegularMiners();
 }
 
 function initGrid() {
-  const grid = document.getElementById("grid");
-  if (!grid) return;
-  grid.innerHTML = "";
-  for (const miner of gpuTemplates) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.id = `card_${miner.id}`;
-    grid.appendChild(card);
-    renderMinerCard(miner.id);
-  }
+  renderAllCards();
 }
 
 // ========== API ==========
@@ -1088,9 +1372,7 @@ async function apiRequest(action, additionalData = {}) {
 }
 
 async function loadUserData(referrerId = null) {
-  console.log('Sending referrer_id to server:', referrerId);
   const result = await apiRequest("register", { referrer_id: referrerId });
-  console.log('Server response:', result);
   if (result?.success && result.data) {
     playerData = { 
       ton: result.data.ton, 
@@ -1177,16 +1459,13 @@ async function loadTasksGame() {
 }
 
 async function completeTask(taskId, taskUrl) {
-    // 1. Всегда открываем ссылку в новой вкладке, если она есть
     if (taskUrl && taskUrl.trim() !== "") {
         window.open(taskUrl, '_blank');
         showToast("🔗 Задание открыто! После выполнения нажмите кнопку ещё раз для подтверждения", 'success');
     } else {
-        // На случай, если у задания нет ссылки
         showToast("⚠️ Для этого задания нет ссылки.", 'error');
     }
     
-    // 2. Отправляем запрос на сервер, что задание выполнено
     const result = await apiRequest("tasks/complete", { taskId });
     
     if (result?.success) {
@@ -1195,7 +1474,6 @@ async function completeTask(taskId, taskUrl) {
         showToast("❌ Ошибка при выполнении задания", 'error');
     }
     
-    // 3. Обновляем интерфейс
     await loadTasksGame();
     await syncWithServer();
 }
@@ -1225,7 +1503,7 @@ function initExchange() {
       sellBtn.textContent = "⏳ Обработка...";
       
       try {
-        const response = await fetch(`https://tst-production-c55e.up.railway.app/api/exchange`, {
+        const response = await fetch(`https://ваш-сервер/api/exchange`, {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
@@ -1323,12 +1601,10 @@ async function init() {
   
   let referrerId = null;
   
-  console.log('Checking Telegram start_param:', tg.initDataUnsafe?.start_param);
   if (tg.initDataUnsafe?.start_param) {
     const startParam = tg.initDataUnsafe.start_param;
     if (startParam && startParam.startsWith('ref_')) {
       referrerId = startParam.replace('ref_', '');
-      console.log('✅ Referrer found in Telegram:', referrerId);
     }
   }
   
@@ -1337,11 +1613,11 @@ async function init() {
     let param = urlParams.get('startapp') || urlParams.get('start_param');
     if (param && param.startsWith('ref_')) {
       referrerId = param.replace('ref_', '');
-      console.log('✅ Referrer found in URL:', referrerId);
     }
   }
   
-  console.log('Final referrer_id:', referrerId);
+  // Получаем статус акции с сервера
+  await fetchPromoStatus();
   
   initMinerQuantities();
   initGrid();
@@ -1354,6 +1630,14 @@ async function init() {
   lastMiningTimestamp = Date.now();
   startClientMining();
   setInterval(syncWithServer, 60000);
+  
+  // Запускаем обновление таймера
+  setInterval(() => {
+    updateLimitedTimer();
+    if (!promoActive) {
+      renderLimitedMiners();
+    }
+  }, 1000);
   
   document.getElementById("claimAllBtn").onclick = claimAccumulatedReward;
   

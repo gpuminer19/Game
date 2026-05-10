@@ -1131,8 +1131,9 @@ async function syncWithServer() {
 }
 
 // ========== СБОР НАКОПЛЕННОГО ==========
+// ========== СБОР НАКОПЛЕННОГО ==========
 async function claimAccumulatedReward() {
-    // Шаг 1: Проверяем, нужно ли показывать рекламу
+    // Шаг 1: Проверяем, есть ли накопления на сервере
     const result = await apiRequest("claim", {});
     
     if (result?.success) {
@@ -1154,11 +1155,12 @@ async function claimAccumulatedReward() {
     }
     
     if (result?.error === 'NEEDS_AD') {
-        // Сервер сказал: нужна реклама, запоминаем накопления
+        // Сервер сказал: нужна реклама
         const rewardTon = result.rewardTon || 0;
         const rewardGpu = result.rewardGpu || 0;
-        // Показываем рекламу
-        showAdBeforeClaim(rewardTon, rewardGpu);
+        
+        // Показываем рекламу с fallback
+        showAdWithFallback(rewardTon, rewardGpu);
         return;
     }
     
@@ -1171,36 +1173,52 @@ async function claimAccumulatedReward() {
     }
 }
 
-// Функция показа рекламы через AdsGram
-function showAdBeforeClaim(rewardTon, rewardGpu) {
+// ========== РЕКЛАМА С FALLBACK ==========
+// Пытаемся показать рекламу AdsGram, при ошибке выдаём награду
+function showAdWithFallback(rewardTon, rewardGpu) {
+    console.log('📢 Пытаемся показать рекламу через AdsGram');
+    
+    // Проверяем, загрузилась ли библиотека AdsGram
     if (typeof AdsgramReward === 'undefined') {
-        console.error('AdsGram не загружен');
-        showToast("⚠️ Реклама временно недоступна, попробуйте позже", 'error');
+        console.warn('⚠️ AdsGram не загружен, выдаём награду без рекламы');
+        showToast("Реклама временно недоступна. Награда выдана!", 'warning');
+        claimAfterAd();
         return;
     }
     
-    const adController = new AdsgramReward({
-        blockId: '29842', // ВАШ BLOCK ID ИЗ ADSGRAM
-        onReward: async (data) => {
-            console.log('Реклама просмотрена, начисляем накопления', data);
-            await claimAfterAd();
-        },
-        onError: (error) => {
-            console.error('Ошибка рекламы:', error);
-            showToast("Не удалось загрузить рекламу. Попробуйте позже.", 'error');
-        },
-        onClose: () => {
-            console.log('Реклама закрыта (возможно, не досмотрена)');
-        }
-    });
-    
-    adController.show().catch(err => {
-        console.error('Ошибка показа рекламы:', err);
-        showToast("Не удалось показать рекламу", 'error');
-    });
+    try {
+        const adController = new AdsgramReward({
+            blockId: '29842',  // Ваш Block ID
+            onReward: async (data) => {
+                console.log('✅ Реклама AdsGram успешно просмотрена', data);
+                await claimAfterAd();
+            },
+            onError: (error) => {
+                console.error('❌ Ошибка AdsGram:', error);
+                showToast("Реклама не загрузилась. Награда выдана без рекламы.", 'warning');
+                // Всё равно выдаём награду
+                claimAfterAd();
+            },
+            onClose: () => {
+                console.log('👋 Реклама закрыта');
+                // Не выдаём награду, если закрыли без просмотра
+            }
+        });
+        
+        adController.show().catch(err => {
+            console.error('❌ Критическая ошибка показа AdsGram:', err);
+            showToast("Не удалось показать рекламу. Награда выдана.", 'warning');
+            claimAfterAd();  // Fallback
+        });
+        
+    } catch (error) {
+        console.error('❌ Исключение при инициализации AdsGram:', error);
+        showToast("Ошибка рекламы. Награда выдана.", 'warning');
+        claimAfterAd();  // Fallback
+    }
 }
 
-// Функция получения накоплений ПОСЛЕ просмотра рекламы
+// Функция получения накоплений ПОСЛЕ рекламы (или без неё)
 async function claimAfterAd() {
     const result = await apiRequest("claimAfterAd", {});
     
@@ -1216,7 +1234,7 @@ async function claimAfterAd() {
         } else {
             await syncWithServer();
         }
-        showToast("🎉 Накопления получены после рекламы!", 'success');
+        showToast("🎉 Накопления получены!", 'success');
     } else {
         showToast("❌ Ошибка при получении накоплений", 'error');
     }

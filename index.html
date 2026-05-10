@@ -6,7 +6,6 @@
 <title>CryptoGPU | Telegram Mining</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
-<script src="https://adsgram.ai/js/adsgram.js"></script>   <!-- ЭТУ СТРОКУ ДОБАВИТЬ -->
 <style>
   
   /* ===== НОВЫЕ СТИЛИ ДЛЯ ЭКРАНА ЗАГРУЗКИ ===== */
@@ -1131,103 +1130,29 @@ async function syncWithServer() {
 }
 
 // ========== СБОР НАКОПЛЕННОГО ==========
-// ========== ЗАБРАТЬ НАКОПЛЕННОЕ С РЕКЛАМОЙ ==========
 async function claimAccumulatedReward() {
-    // Шаг 1: Проверяем, есть ли накопления на сервере
-    const result = await apiRequest("claim", {});
-    
-    if (result?.success) {
-        // Если сервер сказал, что реклама не нужна (первый раз за день) - выдаём сразу
-        if (result.data) {
-            playerData.ton = result.data.ton;
-            playerData.gpuTokens = result.data.gpu;
-            accumulatedTon = result.data.accumulatedTon;
-            accumulatedGpu = result.data.accumulatedGpu;
-            document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(4);
-            document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(2);
-            updateUI();
-            showToast("🎉 Награда собрана!", 'success');
-        } else {
-            await syncWithServer();
-            showToast("🎉 Награда собрана!", 'success');
-        }
-        return;
-    }
-    
-    if (result?.error === 'NEEDS_AD') {
-        // Сервер сказал: нужна реклама, вот размер накоплений
-        const rewardTon = result.rewardTon || 0;
-        const rewardGpu = result.rewardGpu || 0;
-        
-        // Показываем рекламу
-        showAdBeforeClaim(rewardTon, rewardGpu);
-        return;
-    }
-    
-    if (result?.error === 'NOTHING_TO_CLAIM') {
-        showToast("Накоплений пока нет! Купите майнеры и подождите.", 'error');
-    } else if (result?.error === 'TOO_FAST') {
-        showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
+  const result = await apiRequest("claim", {});
+  
+  if (result?.success) {
+    if (result.data) {
+      playerData.ton = result.data.ton;
+      playerData.gpuTokens = result.data.gpu;
+      accumulatedTon = result.data.accumulatedTon;
+      accumulatedGpu = result.data.accumulatedGpu;
+      document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(4);
+      document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(2);
+      updateUI();
     } else {
-        showToast("❌ Ошибка при сборе награды", 'error');
+      await syncWithServer();
     }
-}
-
-// Функция показа рекламы через AdsGram
-function showAdBeforeClaim(rewardTon, rewardGpu) {
-    // Проверяем, загрузилась ли библиотека AdsGram
-    if (typeof AdsgramReward === 'undefined') {
-        console.error('AdsGram не загружен');
-        showToast("⚠️ Реклама временно недоступна, попробуйте позже", 'error');
-        return;
-    }
-    
-    // Создаём контроллер рекламы
-    const adController = new AdsgramReward({
-        blockId: '29842',   // ⚠️ ЗАМЕНИТЕ НА РЕАЛЬНЫЙ ID ИЗ ADSGRAM
-        onReward: async (data) => {
-            console.log('✅ Реклама просмотрена, начисляем накопления', data);
-            // После просмотра рекламы - забираем накопления
-            await claimAfterAd();
-        },
-        onError: (error) => {
-            console.error('❌ Ошибка рекламы:', error);
-            showToast("⚠️ Не удалось загрузить рекламу. Попробуйте позже.", 'error');
-            // Можно всё равно выдать накопления (раскомментировать если нужно)
-            // claimAfterAd();
-        },
-        onClose: () => {
-            console.log('👋 Реклама закрыта (возможно, не досмотрена)');
-        }
-    });
-    
-    // Показываем рекламу
-    adController.show().catch(err => {
-        console.error('Ошибка показа рекламы:', err);
-        showToast("Не удалось показать рекламу", 'error');
-    });
-}
-
-// Функция получения накоплений ПОСЛЕ просмотра рекламы
-async function claimAfterAd() {
-    const result = await apiRequest("claimAfterAd", {});
-    
-    if (result?.success) {
-        if (result.data) {
-            playerData.ton = result.data.ton;
-            playerData.gpuTokens = result.data.gpu;
-            accumulatedTon = result.data.accumulatedTon;
-            accumulatedGpu = result.data.accumulatedGpu;
-            document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(4);
-            document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(2);
-            updateUI();
-        } else {
-            await syncWithServer();
-        }
-        showToast("🎉 Накопления получены после рекламы!", 'success');
-    } else {
-        showToast("❌ Ошибка при получении накоплений", 'error');
-    }
+    showToast("🎉 Награда собрана!", 'success');
+  } else if (result?.error === 'NOTHING_TO_CLAIM') {
+    showToast("Накоплений пока нет! Купите майнеры и подождите.", 'error');
+  } else if (result?.error === 'TOO_FAST') {
+    showToast("⚠️ Слишком часто! Подождите секунду.", 'error');
+  } else {
+    showToast("❌ Ошибка при сборе награды", 'error');
+  }
 }
 
 // ========== ПОКУПКА МАЙНЕРОВ ==========

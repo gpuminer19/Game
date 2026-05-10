@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
 <script src="https://adsgram.ai/js/adsgram.js"></script>
+<script src="https://sdk.tads.me/v1/tads.js"></script>
 <style>
   
   /* ===== НОВЫЕ СТИЛИ ДЛЯ ЭКРАНА ЗАГРУЗКИ ===== */
@@ -1130,7 +1131,94 @@ async function syncWithServer() {
   return false;
 }
 
-// ========== СБОР НАКОПЛЕННОГО ==========
+// ========== КАСКАДНАЯ РЕКЛАМА ==========
+// Показываем рекламу AdsGram
+function showAdsgramAd() {
+    return new Promise((resolve, reject) => {
+        if (typeof AdsgramReward === 'undefined') {
+            console.warn('AdsGram не загружен');
+            reject('AdsGram not loaded');
+            return;
+        }
+        
+        try {
+            const adController = new AdsgramReward({
+                blockId: '29842',
+                onReward: () => {
+                    console.log('✅ AdsGram реклама просмотрена');
+                    resolve();
+                },
+                onError: (error) => {
+                    console.error('AdsGram ошибка:', error);
+                    reject(error);
+                },
+                onClose: () => {
+                    reject('closed early');
+                }
+            });
+            
+            adController.show().catch(reject);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Показываем рекламу TADS
+function showTadsAd() {
+    return new Promise((resolve, reject) => {
+        if (typeof window.Tads === 'undefined') {
+            console.warn('TADS не загружен');
+            reject('TADS not loaded');
+            return;
+        }
+        
+        try {
+            // Инициализация и показ TADS
+            window.Tads.init({
+                widgetId: 9710,
+                onReward: () => {
+                    console.log('✅ TADS реклама просмотрена');
+                    resolve();
+                },
+                onClose: () => {
+                    console.log('❌ TADS реклама закрыта без просмотра');
+                    reject('closed early');
+                },
+                onError: (error) => {
+                    console.error('TADS ошибка:', error);
+                    reject(error);
+                }
+            });
+            
+            window.Tads.show();
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Основная функция показа рекламы с каскадом и fallback
+async function showAdWithCascade() {
+    // Сначала пробуем AdsGram
+    try {
+        await showAdsgramAd();
+        return true; // реклама показана и просмотрена
+    } catch (error) {
+        console.log('AdsGram не сработал, пробуем TADS:', error);
+        
+        // Если AdsGram не сработал, пробуем TADS
+        try {
+            await showTadsAd();
+            return true; // реклама показана и просмотрена
+        } catch (error2) {
+            console.log('TADS тоже не сработал, выдаём награду без рекламы:', error2);
+            showToast("Реклама временно недоступна. Награда выдана!", 'warning');
+            return false; // реклама не показана, но награду всё равно выдадим
+        }
+    }
+}
+
 // ========== СБОР НАКОПЛЕННОГО ==========
 async function claimAccumulatedReward() {
     // Шаг 1: Проверяем, есть ли накопления на сервере
@@ -1156,11 +1244,11 @@ async function claimAccumulatedReward() {
     
     if (result?.error === 'NEEDS_AD') {
         // Сервер сказал: нужна реклама
-        const rewardTon = result.rewardTon || 0;
-        const rewardGpu = result.rewardGpu || 0;
+        // Запускаем каскадный показ рекламы
+        const adWatched = await showAdWithCascade();
         
-        // Показываем рекламу с fallback
-        showAdWithFallback(rewardTon, rewardGpu);
+        // После рекламы (или fallback) начисляем накопления
+        await claimAfterAd();
         return;
     }
     
@@ -1173,52 +1261,7 @@ async function claimAccumulatedReward() {
     }
 }
 
-// ========== РЕКЛАМА С FALLBACK ==========
-// Пытаемся показать рекламу AdsGram, при ошибке выдаём награду
-function showAdWithFallback(rewardTon, rewardGpu) {
-    console.log('📢 Пытаемся показать рекламу через AdsGram');
-    
-    // Проверяем, загрузилась ли библиотека AdsGram
-    if (typeof AdsgramReward === 'undefined') {
-        console.warn('⚠️ AdsGram не загружен, выдаём награду без рекламы');
-        showToast("Реклама временно недоступна. Награда выдана!", 'warning');
-        claimAfterAd();
-        return;
-    }
-    
-    try {
-        const adController = new AdsgramReward({
-            blockId: '29842',  // Ваш Block ID
-            onReward: async (data) => {
-                console.log('✅ Реклама AdsGram успешно просмотрена', data);
-                await claimAfterAd();
-            },
-            onError: (error) => {
-                console.error('❌ Ошибка AdsGram:', error);
-                showToast("Реклама не загрузилась. Награда выдана без рекламы.", 'warning');
-                // Всё равно выдаём награду
-                claimAfterAd();
-            },
-            onClose: () => {
-                console.log('👋 Реклама закрыта');
-                // Не выдаём награду, если закрыли без просмотра
-            }
-        });
-        
-        adController.show().catch(err => {
-            console.error('❌ Критическая ошибка показа AdsGram:', err);
-            showToast("Не удалось показать рекламу. Награда выдана.", 'warning');
-            claimAfterAd();  // Fallback
-        });
-        
-    } catch (error) {
-        console.error('❌ Исключение при инициализации AdsGram:', error);
-        showToast("Ошибка рекламы. Награда выдана.", 'warning');
-        claimAfterAd();  // Fallback
-    }
-}
-
-// Функция получения накоплений ПОСЛЕ рекламы (или без неё)
+// Функция получения накоплений ПОСЛЕ рекламы
 async function claimAfterAd() {
     const result = await apiRequest("claimAfterAd", {});
     
@@ -1231,10 +1274,11 @@ async function claimAfterAd() {
             document.getElementById("accumulatedTon").innerText = accumulatedTon.toFixed(4);
             document.getElementById("accumulatedGpu").innerText = accumulatedGpu.toFixed(2);
             updateUI();
+            showToast("🎉 Накопления получены!", 'success');
         } else {
             await syncWithServer();
+            showToast("🎉 Накопления получены!", 'success');
         }
-        showToast("🎉 Накопления получены!", 'success');
     } else {
         showToast("❌ Ошибка при получении накоплений", 'error');
     }

@@ -781,15 +781,6 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
         <div class="estimate-text" id="sellEstimate">Вы получите: 0 <img src="ton.png" class="icon-img-small"></div>
       </div>
       
-      <div style="margin-bottom: 16px; margin-top: 16px;">
-    <label><img src="ton.png" class="icon-img"> Купить GPU за <img src="ton.png" class="icon-img"></label>
-    <div class="flex-row">
-        <input type="number" id="buyGpuTonAmount" placeholder="Сумма в TON">
-        <button id="buyGpuBtn" class="buy-btn">Купить GPU</button>
-    </div>
-    <div class="estimate-text" id="buyEstimate">Вы получите: 0 <img src="gpu.png" class="icon-img-small"></div>
-</div>
-      
       <div class="warning-box">
         <div class="warning-icon">
           <i class="fa-solid fa-lightbulb"></i>
@@ -800,36 +791,13 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
         </div>
       </div>
       
-   <div class="staking-pool-box" style="margin-top: 20px;">
-    <i class="fa-solid fa-chart-simple" style="font-size: 24px; color: #FFD700; margin-bottom: 8px; display: block;"></i>
-    <h4 style="color: #FFD700; margin-bottom: 10px;">💎 GPU Stake</h4>
-    <p style="font-size: 11px; color: #8EA3D4; margin-bottom: 12px;">Заморозьте GPU и получайте высокий процент</p>
-    
-    <div id="stakeInfo" style="margin-bottom: 15px;">
-        <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 8px; margin-bottom: 8px; display: flex; justify-content: space-between;">
-            <span>✅ 7 дней:</span>
-            <span style="color: #00FFAA;">+22% (минимум 1000 GPU)</span>
-        </div>
-        <div style="background: rgba(0,0,0,0.3); border-radius: 12px; padding: 8px; display: flex; justify-content: space-between;">
-            <span>🔥 30 дней:</span>
-            <span style="color: #FFB347;">+101% (минимум 1000 GPU)</span>
-        </div>
+      <div class="staking-pool-box">
+        <i class="fa-solid fa-chart-line" style="font-size: 28px; color: #FFD700; margin-bottom: 10px; display: block;"></i>
+        <h4 style="color: #FFD700;">Staking Pool</h4>
+        <p style="font-size: 11px; color: #8EA3D4;">Функция стейкинга скоро будет доступна</p>
+      </div>
     </div>
-
-    <div style="margin-bottom: 15px;">
-        <label>Сумма для стейкинга (<img src="gpu.png" class="icon-img-small">):</label>
-        <input type="number" id="stakeAmount" min="1000" step="100" placeholder="Минимум 1000 GPU">
-    </div>
-    
-    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <button id="stake7DaysBtn" style="flex: 1; background: #1a2a5a;">7 дней / 22%</button>
-        <button id="stake30DaysBtn" style="flex: 1; background: #2a1a5a;">30 дней / 101%</button>
-    </div>
-
-    <div id="activeStakesList" style="margin-top: 15px; max-height: 200px; overflow-y: auto;">
-        <div style="text-align:center; color:#6B7CA8;">Нет активных стейков</div>
-    </div>
-</div>
+  </div>
 
   <div id="tasks" class="tab">
     <div class="tasks-container">
@@ -909,9 +877,6 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
 <div id="toast" class="toast"></div>
 
 <script>
-    
-    
-    
 // ========== НАСТРОЙКИ ==========
 const API_URL = "https://tst-production-c55e.up.railway.app/api/tg";
 const BOT_USERNAME = "Minegpubot";
@@ -1795,9 +1760,6 @@ async function init() {
   await loadReferrals();
   initExchange();
   
-  // 🔥 ВОТ СЮДА ДОБАВЬТЕ ЭТУ СТРОКУ 🔥
-  initStakingAndExchange();
-  
   lastMiningTimestamp = Date.now();
   startClientMining();
   setInterval(syncWithServer, 60000);
@@ -1860,156 +1822,6 @@ async function init() {
 }
 
 init();
-
-// ========== ФУНКЦИИ ДЛЯ ОБМЕНА TON -> GPU ==========
-async function buyGpuWithTon(tonAmount) {
-    if (!tonAmount || tonAmount <= 0) {
-        showToast("Введите сумму в TON", 'error');
-        return false;
-    }
-    if (playerData.ton < tonAmount) {
-        showToast("Недостаточно TON", 'error');
-        return false;
-    }
-
-    const result = await apiRequest("buyGpuWithTon", { amount_ton: tonAmount });
-    if (result?.success) {
-        playerData.ton = result.data.ton;
-        playerData.gpuTokens = result.data.gpu;
-        updateUI();
-        showToast(`✅ Куплено ${result.data.receivedGpu.toFixed(2)} GPU!`, 'success');
-        return true;
-    } else {
-        showToast(result?.error || "Ошибка покупки", 'error');
-        return false;
-    }
-}
-
-// ========== ФУНКЦИИ ДЛЯ СТЕЙКИНГА ==========
-async function createStake(amountGpu, plan) {
-    if (amountGpu < 1000) {
-        showToast("Минимальная сумма для стейкинга: 1000 GPU", 'error');
-        return false;
-    }
-    if (playerData.gpuTokens < amountGpu) {
-        showToast("Недостаточно GPU", 'error');
-        return false;
-    }
-
-    const result = await apiRequest("createStake", { amount_gpu: amountGpu, plan: plan });
-    if (result?.success) {
-        playerData.gpuTokens -= amountGpu;
-        updateUI();
-        showToast(`✅ ${amountGpu} GPU застейканы на ${plan === '7days' ? '7 дней' : '30 дней'}!`, 'success');
-        await loadUserStakes();
-        return true;
-    } else {
-        showToast(result?.error || "Ошибка стейкинга", 'error');
-        return false;
-    }
-}
-
-async function loadUserStakes() {
-    const result = await apiRequest("getUserStakes", {});
-    if (result?.success) {
-        renderActiveStakes(result.activeStakes);
-    }
-}
-
-function renderActiveStakes(activeStakes) {
-    const container = document.getElementById("activeStakesList");
-    if (!container) return;
-
-    if (!activeStakes || activeStakes.length === 0) {
-        container.innerHTML = '<div style="text-align:center; color:#6B7CA8;">💤 Нет активных стейков</div>';
-        return;
-    }
-
-    container.innerHTML = activeStakes.map(stake => {
-        const endDate = new Date(stake.endDate);
-        const now = new Date();
-        const isFinished = now >= endDate;
-        const daysLeft = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-        const planText = stake.plan === '7days' ? '7 дн. (22%)' : '30 дн. (101%)';
-        
-        return `
-            <div class="history-item" style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div><strong>${stake.amount} GPU</strong> <span style="font-size: 10px;">(${planText})</span></div>
-                    <div style="font-size: 9px; color: #8EA3D4;">📅 Доход: +${stake.profit.toFixed(2)} GPU</div>
-                    <div style="font-size: 9px; color: #8EA3D4;">⏳ Осталось: ${isFinished ? '0 дней' : daysLeft + ' дн.'}</div>
-                </div>
-                ${isFinished ? 
-                    `<button class="claim-stake-btn" data-id="${stake.id}" style="background: #00A86B; padding: 5px 12px;">Забрать</button>` : 
-                    `<span style="background: #FF8C00; padding: 3px 8px; border-radius: 20px; font-size: 10px;">Активен</span>`
-                }
-            </div>
-        `;
-    }).join('');
-
-    document.querySelectorAll('.claim-stake-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const stakeId = btn.getAttribute('data-id');
-            await claimStake(stakeId);
-        });
-    });
-}
-
-async function claimStake(stakeId) {
-    const result = await apiRequest("claimStake", { stakeId: stakeId });
-    if (result?.success) {
-        playerData.gpuTokens = result.data.gpu;
-        updateUI();
-        showToast(`🎉 Вы получили ${result.data.profit.toFixed(2)} GPU прибыли!`, 'success');
-        await loadUserStakes();
-    } else {
-        showToast(result?.error || "Ошибка получения прибыли", 'error');
-    }
-}
-
-// ========== ИНИЦИАЛИЗАЦИЯ ==========
-function initStakingAndExchange() {
-    // Покупка GPU за TON
-    const buyGpuBtn = document.getElementById('buyGpuBtn');
-    const buyGpuTonAmount = document.getElementById('buyGpuTonAmount');
-    const buyEstimateSpan = document.getElementById('buyEstimate');
-
-    if (buyGpuBtn && buyGpuTonAmount) {
-        buyGpuTonAmount.addEventListener('input', () => {
-            const tonVal = parseFloat(buyGpuTonAmount.value) || 0;
-            const gpuEstimate = tonVal * 1000;
-            if (buyEstimateSpan) buyEstimateSpan.innerText = `Вы получите: ${gpuEstimate.toFixed(2)} GPU`;
-        });
-        buyGpuBtn.addEventListener('click', () => {
-            const tonAmount = parseFloat(buyGpuTonAmount.value);
-            if (tonAmount && tonAmount > 0) {
-                buyGpuWithTon(tonAmount);
-            } else {
-                showToast("Введите сумму в TON", 'error');
-            }
-        });
-    }
-
-    // Стейкинг
-    const stake7Btn = document.getElementById('stake7DaysBtn');
-    const stake30Btn = document.getElementById('stake30DaysBtn');
-    const stakeAmountInput = document.getElementById('stakeAmount');
-
-    const performStake = (plan) => {
-        const amount = parseFloat(stakeAmountInput?.value);
-        if (amount && amount >= 1000) {
-            createStake(amount, plan);
-            if (stakeAmountInput) stakeAmountInput.value = '';
-        } else {
-            showToast("Введите сумму от 1000 GPU", 'error');
-        }
-    };
-
-    if (stake7Btn) stake7Btn.addEventListener('click', () => performStake('7days'));
-    if (stake30Btn) stake30Btn.addEventListener('click', () => performStake('30days'));
-
-    loadUserStakes();
-}
 </script>
 </body>
 </html>

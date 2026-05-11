@@ -476,7 +476,7 @@ button:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
 .ref-link-box span { font-size: 9px; font-family: monospace; color: #FFD699; word-break: break-all; }
 .copy-btn { width: auto; padding: 5px 12px; background: #FF8C00; margin: 0; border-radius: 40px; font-size: 11px; }
 
-/* ===== НИЖНЕЕ МЕНЮ В СТИЛЕ ВЕРХНЕЙ ШАПКИ ===== */
+/* ===== НИЖНЕЕ МЕНЮ ===== */
 .tg-bottom-nav {
     position: fixed;
     bottom: 0;
@@ -555,29 +555,153 @@ button:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
 .deposit-box .pay-btn { margin-top: 4px; background: linear-gradient(95deg, #00D4FF, #0066FF); color: #0B0E1A; border-radius: 40px; }
 .withdraw-btn { background: linear-gradient(95deg, #FF8C00, #FF6600); border-radius: 40px; }
 
-.warning-box {
-    background: rgba(255, 200, 0, 0.1);
-    border: 1px solid rgba(255, 200, 0, 0.5);
-    border-radius: 14px;
-    padding: 12px 16px;
-    margin-top: 16px;
+/* ===== СТИЛИ ДЛЯ НОВОГО ОБМЕНА ===== */
+.exchange-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin: 16px 0;
+}
+.exchange-card {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+    padding: 16px;
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.exchange-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.05), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.5s ease;
+    pointer-events: none;
+}
+.exchange-card:hover::before {
+    left: 100%;
+}
+.exchange-card h4 {
+    color: #00D4FF;
+    font-size: 14px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 6px;
 }
-.warning-icon {
-    font-size: 24px;
-    color: #FFD700;
+.flex-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 4px;
+    margin-bottom: 8px;
 }
-.warning-text {
+.flex-row input {
+    flex: 2;
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    border: 1px solid #00D4FF;
+    border-radius: 10px;
+    padding: 10px;
+}
+.flex-row button {
     flex: 1;
-    font-size: 12px;
-    color: #FFD700;
-    line-height: 1.3;
 }
-.warning-text small {
+.estimate-text {
     font-size: 10px;
-    color: rgba(255, 215, 0, 0.7);
+    color: #6B7CA8;
+    margin-top: 5px;
+}
+.exchange-rate-box {
+    background: rgba(0,0,0,0.2);
+    border-radius: 14px;
+    padding: 10px;
+    margin-bottom: 14px;
+    text-align: center;
+}
+.exchange-rate {
+    font-size: 20px;
+    font-weight: bold;
+    color: #00D4FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* ===== СТИЛИ ДЛЯ СТЕЙКИНГА ===== */
+.staking-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 16px 0;
+}
+.staking-card {
+    background: linear-gradient(135deg, rgba(0, 40, 60, 0.4), rgba(0, 20, 40, 0.6));
+    border-radius: 20px;
+    padding: 16px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    backdrop-filter: blur(10px);
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.staking-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+.staking-card:hover::before {
+    opacity: 1;
+}
+.staking-card h3 {
+    color: #FFD700;
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+.staking-percent {
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin: 8px 0;
+}
+.staking-days {
+    font-size: 12px;
+    color: #8EA3D4;
+    margin-bottom: 12px;
+}
+.staking-min {
+    font-size: 11px;
+    color: #00D4FF;
+    margin-bottom: 16px;
+}
+.staking-card button {
+    background: linear-gradient(95deg, #FFD700, #FFA500);
+    color: #0B0E1A;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 40px;
+    width: 100%;
+}
+.staking-card button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .toast {
@@ -610,30 +734,6 @@ button:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
 
 hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
 .copy-mini { background: #FF8C00; padding: 3px 8px; font-size: 10px; border-radius: 20px; width: auto; }
-.flex-row { display: flex; gap: 8px; align-items: center; margin-top: 4px; margin-bottom: 8px; }
-.flex-row input { flex: 2; background: rgba(0,0,0,0.4); color: #fff; border: 1px solid #00D4FF; border-radius: 10px; padding: 10px; }
-.flex-row button { flex: 1; }
-.sell-btn { background: #00A86B; border-radius: 40px; }
-.estimate-text { font-size: 10px; color: #6B7CA8; }
-.exchange-rate-box { background: rgba(0,0,0,0.2); border-radius: 14px; padding: 10px; margin-bottom: 14px; text-align: center; }
-.exchange-rate { font-size: 20px; font-weight: bold; color: #00D4FF; display: flex; align-items: center; justify-content: center; gap: 6px; }
-
-.staking-pool-box {
-    margin-top: 16px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 14px;
-    padding: 16px;
-    text-align: center;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-}
-.tasks-container { margin: 12px; }
-.tasks-title { font-size: 16px; margin-bottom: 12px; }
-.task-card { margin-bottom: 10px; }
-.task-desc { font-size: 11px; color: #8EA3D4; margin: 3px 0; }
-.task-rewards { margin-top: 6px; display: flex; gap: 10px; align-items: center; }
-.task-btn { margin-top: 6px; background: #00A86B !important; border-radius: 40px; }
-.task-completed { margin-top: 6px; font-size: 10px; color: #00A86B; }
-.task-pending { margin-top: 6px; font-size: 10px; color: #FF8C00; }
 
 .history-list { max-height: 350px; overflow-y: auto; margin-bottom: 80px; }
 .history-item { background: rgba(0,0,0,0.3); border-radius: 14px; padding: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
@@ -769,32 +869,51 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
       <div class="exchange-rate-box">
         <div style="font-size: 11px; color: #8EA3D4;">Текущий курс</div>
         <div class="exchange-rate">
-          1 <img src="gpu.png" class="icon-img"> = 0.001 <img src="ton.png" class="icon-img">
-        </div>
-      </div>
-      <div style="margin-bottom: 16px;">
-        <label><img src="gpu.png" class="icon-img"> Продать GPU за <img src="ton.png" class="icon-img"></label>
-        <div class="flex-row">
-          <input type="number" id="sellGpuAmount" placeholder="Количество GPU">
-          <button id="sellGpuBtn" class="sell-btn">Продать</button>
-        </div>
-        <div class="estimate-text" id="sellEstimate">Вы получите: 0 <img src="ton.png" class="icon-img-small"></div>
-      </div>
-      
-      <div class="warning-box">
-        <div class="warning-icon">
-          <i class="fa-solid fa-lightbulb"></i>
-        </div>
-        <div class="warning-text">
-          <strong>Не спешите продавать!</strong><br>
-          <small>Каждый месяц стоимость 1 GPU увеличивается в 2 раза</small>
+          1 <img src="gpu.png" class="icon-img"> = 0.001 <img src="ton.png" class="icon-img"> &nbsp;&nbsp;|&nbsp;&nbsp; 1 <img src="ton.png" class="icon-img"> = 1000 <img src="gpu.png" class="icon-img">
         </div>
       </div>
       
-      <div class="staking-pool-box">
-        <i class="fa-solid fa-chart-line" style="font-size: 28px; color: #FFD700; margin-bottom: 10px; display: block;"></i>
-        <h4 style="color: #FFD700;">Staking Pool</h4>
-        <p style="font-size: 11px; color: #8EA3D4;">Функция стейкинга скоро будет доступна</p>
+      <div class="exchange-grid">
+        <!-- Обмен GPU -> TON -->
+        <div class="exchange-card">
+          <h4><i class="fa-solid fa-arrow-right-arrow-left"></i> Продать GPU за TON</h4>
+          <div class="flex-row">
+            <input type="number" id="sellGpuAmount" placeholder="Количество GPU">
+            <button id="sellGpuBtn" class="sell-btn">Продать</button>
+          </div>
+          <div class="estimate-text" id="sellEstimate">Вы получите: 0 <img src="ton.png" class="icon-img-small"></div>
+        </div>
+        
+        <!-- Обмен TON -> GPU -->
+        <div class="exchange-card">
+          <h4><i class="fa-solid fa-arrow-left-arrow-right"></i> Купить GPU за TON</h4>
+          <div class="flex-row">
+            <input type="number" id="buyGpuAmount" placeholder="Количество TON">
+            <button id="buyGpuBtn" class="buy-btn">Купить</button>
+          </div>
+          <div class="estimate-text" id="buyEstimate">Вы получите: 0 <img src="gpu.png" class="icon-img-small"></div>
+        </div>
+      </div>
+      
+      <!-- НОВЫЙ БЛОК СТЕЙКИНГА -->
+      <div style="margin-top: 20px;">
+        <h3><i class="fa-solid fa-chart-line"></i> Стейкинг GPU</h3>
+        <div class="staking-container" id="stakingContainer">
+          <div class="staking-card">
+            <h3>🚀 7 дней</h3>
+            <div class="staking-percent">+22%</div>
+            <div class="staking-days">Доходность: 22% за 7 дней</div>
+            <div class="staking-min">Минимальная сумма: 2000 GPU</div>
+            <button id="stake7DaysBtn" onclick="stakeGpu(7, 22)">Застейкать 2000+ GPU</button>
+          </div>
+          <div class="staking-card">
+            <h3>🌟 30 дней</h3>
+            <div class="staking-percent">+22%</div>
+            <div class="staking-days">Доходность: 22% за 30 дней</div>
+            <div class="staking-min">Минимальная сумма: 2000 GPU</div>
+            <button id="stake30DaysBtn" onclick="stakeGpu(30, 22)">Застейкать 2000+ GPU</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -954,7 +1073,7 @@ const limitedMiners = [
 ];
 
 const gpuTemplates = [...regularMiners, ...limitedMiners];
-const EXCHANGE_RATE = 0.001;
+const EXCHANGE_RATE = 0.001; // 1 GPU = 0.001 TON
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let tg = window.Telegram.WebApp;
@@ -1132,7 +1251,6 @@ async function syncWithServer() {
 }
 
 // ========== КАСКАДНАЯ РЕКЛАМА ==========
-// Показываем рекламу AdsGram
 function showAdsgramAd() {
     return new Promise((resolve, reject) => {
         if (typeof AdsgramReward === 'undefined') {
@@ -1164,7 +1282,6 @@ function showAdsgramAd() {
     });
 }
 
-// Показываем рекламу TADS
 function showTadsAd() {
     return new Promise((resolve, reject) => {
         if (typeof window.Tads === 'undefined') {
@@ -1174,7 +1291,6 @@ function showTadsAd() {
         }
         
         try {
-            // Инициализация и показ TADS
             window.Tads.init({
                 widgetId: 9710,
                 onReward: () => {
@@ -1198,34 +1314,28 @@ function showTadsAd() {
     });
 }
 
-// Основная функция показа рекламы с каскадом и fallback
 async function showAdWithCascade() {
-    // Сначала пробуем AdsGram
     try {
         await showAdsgramAd();
-        return true; // реклама показана и просмотрена
+        return true;
     } catch (error) {
         console.log('AdsGram не сработал, пробуем TADS:', error);
-        
-        // Если AdsGram не сработал, пробуем TADS
         try {
             await showTadsAd();
-            return true; // реклама показана и просмотрена
+            return true;
         } catch (error2) {
             console.log('TADS тоже не сработал, выдаём награду без рекламы:', error2);
             showToast("Реклама временно недоступна. Награда выдана!", 'warning');
-            return false; // реклама не показана, но награду всё равно выдадим
+            return false;
         }
     }
 }
 
 // ========== СБОР НАКОПЛЕННОГО ==========
 async function claimAccumulatedReward() {
-    // Шаг 1: Проверяем, есть ли накопления на сервере
     const result = await apiRequest("claim", {});
     
     if (result?.success) {
-        // Если сервер сказал, что реклама не нужна - выдаём сразу
         if (result.data) {
             playerData.ton = result.data.ton;
             playerData.gpuTokens = result.data.gpu;
@@ -1243,11 +1353,7 @@ async function claimAccumulatedReward() {
     }
     
     if (result?.error === 'NEEDS_AD') {
-        // Сервер сказал: нужна реклама
-        // Запускаем каскадный показ рекламы
         const adWatched = await showAdWithCascade();
-        
-        // После рекламы (или fallback) начисляем накопления
         await claimAfterAd();
         return;
     }
@@ -1261,7 +1367,6 @@ async function claimAccumulatedReward() {
     }
 }
 
-// Функция получения накоплений ПОСЛЕ рекламы
 async function claimAfterAd() {
     const result = await apiRequest("claimAfterAd", {});
     
@@ -1294,7 +1399,6 @@ async function buyMiner(minerId) {
     return;
   }
   
-  // Проверка времени для лимитированных майнеров
   if (miner.limitedTime && !promoActive) {
     showToast(`❌ Акция на ${miner.name} закончилась!`, 'error');
     return;
@@ -1606,8 +1710,74 @@ async function completeTask(taskId, taskUrl) {
     await syncWithServer();
 }
 
-// ========== ПРОДАЖА GPU ==========
+// ========== НОВЫЕ ФУНКЦИИ ==========
+// Функция для обмена TON -> GPU
+async function exchangeTonToGpu(tonAmount) {
+  if (isNaN(tonAmount) || tonAmount <= 0) {
+    showToast("Введите корректную сумму TON", 'error');
+    return false;
+  }
+  
+  if (playerData.ton < tonAmount) {
+    showToast(`❌ Недостаточно TON. У вас: ${playerData.ton.toFixed(4)} TON`, 'error');
+    return false;
+  }
+  
+  const result = await apiRequest("exchangeTonToGpu", { tonAmount });
+  
+  if (result?.success) {
+    playerData.ton = result.ton;
+    playerData.gpuTokens = result.gpu;
+    updateUI();
+    showToast(`✅ Куплено ${result.gpu.toFixed(2)} GPU за ${tonAmount} TON`, 'success');
+    return true;
+  } else {
+    if (result?.error === 'INSUFFICIENT_BALANCE') {
+      showToast("❌ Недостаточно TON на балансе", 'error');
+    } else {
+      showToast("❌ Ошибка при обмене", 'error');
+    }
+    return false;
+  }
+}
+
+// Функция для стейкинга GPU
+async function stakeGpu(days, percent) {
+  const amount = parseFloat(prompt(`Введите сумму GPU для стейкинга на ${days} дней (мин. 2000 GPU):`));
+  
+  if (isNaN(amount) || amount < 2000) {
+    showToast("❌ Минимальная сумма для стейкинга 2000 GPU", 'error');
+    return;
+  }
+  
+  if (playerData.gpuTokens < amount) {
+    showToast(`❌ Недостаточно GPU. У вас: ${playerData.gpuTokens.toFixed(2)} GPU`, 'error');
+    return;
+  }
+  
+  const confirmMessage = `Вы уверены, что хотите застейкать ${amount} GPU на ${days} дней под ${percent}%?`;
+  if (!confirm(confirmMessage)) return;
+  
+  const result = await apiRequest("stake", { amount, days, percent });
+  
+  if (result?.success) {
+    playerData.gpuTokens = result.newGpuBalance;
+    updateUI();
+    showToast(`✅ ${amount} GPU застейкано на ${days} дней под ${percent}%! Награда будет начислена автоматически.`, 'success');
+  } else {
+    if (result?.error === 'MIN_AMOUNT_1000') {
+      showToast("❌ Минимальная сумма стейкинга 2000 GPU", 'error');
+    } else if (result?.error === 'INSUFFICIENT_GPU') {
+      showToast("❌ Недостаточно GPU", 'error');
+    } else {
+      showToast("❌ Ошибка при создании стейка", 'error');
+    }
+  }
+}
+
+// ========== ОБМЕН ==========
 function initExchange() {
+  // Продажа GPU -> TON
   const sellInput = document.getElementById("sellGpuAmount");
   const sellEstimate = document.getElementById("sellEstimate");
   const sellBtn = document.getElementById("sellGpuBtn");
@@ -1615,7 +1785,7 @@ function initExchange() {
   if (sellInput) {
     sellInput.addEventListener("input", function() {
       const amount = parseFloat(this.value) || 0;
-      sellEstimate.innerHTML = `Вы получите: ${(amount * 0.001).toFixed(4)} <img src="ton.png" class="icon-img-small">`;
+      sellEstimate.innerHTML = `Вы получите: ${(amount * EXCHANGE_RATE).toFixed(4)} <img src="ton.png" class="icon-img-small">`;
     });
   }
   
@@ -1623,7 +1793,12 @@ function initExchange() {
     sellBtn.onclick = async () => {
       const amount = parseFloat(sellInput.value);
       if (isNaN(amount) || amount <= 0) {
-        showToast("Введите корректное количество", 'error');
+        showToast("Введите корректное количество GPU", 'error');
+        return;
+      }
+      
+      if (playerData.gpuTokens < amount) {
+        showToast(`❌ Недостаточно GPU. У вас: ${playerData.gpuTokens.toFixed(2)} GPU`, 'error');
         return;
       }
       
@@ -1662,6 +1837,39 @@ function initExchange() {
         sellBtn.disabled = false;
         sellBtn.textContent = "Продать";
       }
+    };
+  }
+  
+  // Покупка TON -> GPU
+  const buyInput = document.getElementById("buyGpuAmount");
+  const buyEstimate = document.getElementById("buyEstimate");
+  const buyBtn = document.getElementById("buyGpuBtn");
+  
+  if (buyInput) {
+    buyInput.addEventListener("input", function() {
+      const tonAmount = parseFloat(this.value) || 0;
+      const gpuAmount = tonAmount / EXCHANGE_RATE;
+      buyEstimate.innerHTML = `Вы получите: ${gpuAmount.toFixed(2)} <img src="gpu.png" class="icon-img-small">`;
+    });
+  }
+  
+  if (buyBtn) {
+    buyBtn.onclick = async () => {
+      const tonAmount = parseFloat(buyInput.value);
+      if (isNaN(tonAmount) || tonAmount <= 0) {
+        showToast("Введите корректную сумму TON", 'error');
+        return;
+      }
+      
+      buyBtn.disabled = true;
+      buyBtn.textContent = "⏳ Обработка...";
+      
+      await exchangeTonToGpu(tonAmount);
+      
+      buyBtn.disabled = false;
+      buyBtn.textContent = "Купить";
+      buyInput.value = "";
+      buyEstimate.innerHTML = `Вы получите: 0 <img src="gpu.png" class="icon-img-small">`;
     };
   }
 }
@@ -1749,7 +1957,6 @@ async function init() {
   
   console.log('Final referrer_id:', referrerId);
   
-  // Получаем статус акции
   await fetchPromoStatus();
   
   initMinerQuantities();
@@ -1764,7 +1971,6 @@ async function init() {
   startClientMining();
   setInterval(syncWithServer, 60000);
   
-  // Запускаем обновление таймера
   setInterval(() => {
     updateLimitedTimer();
     if (!promoActive) {
@@ -1820,6 +2026,13 @@ async function init() {
       document.getElementById("app").style.display = "block";
   }, 500);
 }
+
+// Делаем функции глобальными для вызова из HTML
+window.openTab = openTab;
+window.buyMiner = buyMiner;
+window.completeTask = completeTask;
+window.copyText = copyText;
+window.stakeGpu = stakeGpu;
 
 init();
 </script>

@@ -1,0 +1,1544 @@
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
+const axios = require('axios');
+const crypto = require('crypto');
+
+// Импорт обработчика вебхука
+const { handleWebhook } = require('./handlers');
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// ========== СЕССИИ ==========
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'secret123',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URL }),
+  cookie: { maxAge: 24 * 60 * 60 * 1000 }
+}));
+
+// ========== TELEGRAM УВЕДОМЛЕНИЯ ==========
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+
+async function sendTelegramNotification(text, buttons = null, userId = null) {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  
+  const chatId = userId || ADMIN_CHAT_ID;
+  if (!chatId) return;
+  
+  try {
+    const payload = {
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'HTML'
+    };
+    if (buttons && buttons.length > 0) {
+      payload.reply_markup = {
+        inline_keyboard: buttons.map(row => row.map(btn => ({
+          text: btn.text,
+          callback_data: btn.callback_data
+        })))
+      };
+    }
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, payload);
+  } catch (error) {
+    console.error('Telegram error:', error.message);
+  }
+}
+
+// ========== СХЕМЫ MONGODB ==========
+const userSchema = new mongoose.Schema({
+  userId: { type: String, unique: true },
+  name: String,
+  ton: { type: Number, default: 0 },
+  gpu: { type: Number, default: 15 },
+  friends: { type: Number, default: 0 },
+  referrerId: { type: String, default: null },
+  isBanned: { type: Boolean, default: false },
+  isBot: { type: Boolean, default: false },
+  banReason: String,
+  invitedFriends: [{ 
+    friendId: String, 
+    friendName: String, 
+    date: String,
+    earnedGpu: { type: Number, default: 0 }
+  }],
+  lastMiningUpdate: { type: Date, default: Date.now },
+  accumulatedTon: { type: Number, default: 0 },
+  accumulatedGpu: { type: Number, default: 0 },
+  minerQuantities: { type: Object, default: { basic: 1 } },
+  createdAt: { type: Date, default: Date.now },
+  lastSeen: Date,
+  totalDeposited: { type: Number, default: 0 },
+  totalWithdrawn: { type: Number, default: 0 }
+});
+
+const depositSchema = new mongoose.Schema({
+  userId: String,
+  userName: String,
+  amount: Number,
+  wallet: String,
+  comment: String,
+  status: { type: String, default: 'pending' },
+  type: { type: String, default: 'deposit' },
+  createdAt: { type: Date, default: Date.now },
+  processedAt: Date,
+  processedBy: String
+});
+
+const adminSchema = new mongoose.Schema({
+  username: String,
+  passwordHash: String,
+  role: { type: String, default: 'admin' }
+});
+
+const taskSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  title: String,
+  description: String,
+  rewardTon: Number,
+  rewardGpu: Number,
+  type: { type: String, default: 'manual' },
+  taskUrl: String,
+  isDaily: { type: Boolean, default: true },
+  isActive: { type: Boolean, default: true },
+  order: { type: Number, default: 0 }
+});
+
+const userTaskSchema = new mongoose.Schema({
+  userId: String,
+  taskId: String,
+  completedAt: Date,
+  claimed: { type: Boolean, default: false }
+});
+
+// ========== СХЕМА ДЛЯ СТЕЙКИНГА ==========
+const stakeSchema = new mongoose.Schema({
+  userId: String,
+  amount: Number,
+  days: Number,
+  rewardPercent: Number,
+  startDate: { type: Date, default: Date.now },
+  endDate: Date,
+  claimed: { type: Boolean, default: false }
+});
+
+const User = mongoose.model('User', userSchema);
+const Deposit = mongoose.model('Deposit', depositSchema);
+const Admin = mongoose.model('Admin', adminSchema);
+const Task = mongoose.model('Task', taskSchema);
+const UserTask = mongoose.model('UserTask', userTaskSchema);
+const Stake = mongoose.model('Stake', stakeSchema);
+
+// ========== КОНСТАНТЫ ==========
+const RATES = {
+  basic: { ton: 0.01 / 24, gpu: 15 / 24 },
+  normal: { ton: 0.02 / 24, gpu: 15 / 24 },
+  pro: { ton: 0.1 / 24, gpu: 75 / 24 },
+  ultra: { ton: 0.6 / 24, gpu: 380 / 24 },
+  legendary: { ton: 1.4 / 24, gpu: 780 / 24 },
+  minex: { ton: 7 / 24, gpu: 1800 / 24 },
+  friend: { ton: 0.1 / 24, gpu: 15 / 24 },
+  bro: { ton: 0.5 / 24, gpu: 75 / 24 },
+  nexus: { ton: 1.5 / 24, gpu: 200 / 24 },
+  // ========== ЛИМИТИРОВАННЫЕ МАЙНЕРЫ ==========
+  limited_silver: { ton: 0.2 / 24, gpu: 100 / 24 },
+  limited_gold: { ton: 1.0 / 24, gpu: 380 / 24 },
+  limited_diamond: { ton: 6.0 / 24, gpu: 2000 / 24 }
+};
+
+const MINER_PRICES = {
+  basic: { ton: 0, gpu: 40 },
+  normal: { ton: 2, gpu: 0 },
+  pro: { ton: 10, gpu: 0 },
+  ultra: { ton: 50, gpu: 0 },
+  legendary: { ton: 100, gpu: 0 },
+  minex: { ton: 500, gpu: 0 },
+  // ========== ЛИМИТИРОВАННЫЕ МАЙНЕРЫ ==========
+  limited_silver: { ton: 10, gpu: 0 },
+  limited_gold: { ton: 60, gpu: 0 },
+  limited_diamond: { ton: 300, gpu: 0 }
+};
+
+const MINER_LIMITS = {
+  basic: 30,
+  normal: null,
+  pro: null,
+  ultra: null,
+  legendary: null,
+  minex: null,
+  friend: 3,
+  bro: 2,
+  nexus: 1,
+  // ========== ЛИМИТИРОВАННЫЕ МАЙНЕРЫ ==========
+  limited_silver: null,
+  limited_gold: null,
+  limited_diamond: null
+};
+
+// ========== ВРЕМЯ АКЦИИ (7 ДНЕЙ) ==========
+const PROMO_START_TIME = Date.now();
+const PROMO_END_TIME = PROMO_START_TIME + (7 * 24 * 60 * 60 * 1000);
+
+function isPromoActive() {
+  const now = Date.now();
+  return now >= PROMO_START_TIME && now <= PROMO_END_TIME;
+}
+
+// ========== ВЕРИФИКАЦИЯ TELEGRAM INIT DATA ==========
+function verifyTelegramInitData(initData) {
+  if (!initData) return false;
+  try {
+    const urlParams = new URLSearchParams(initData);
+    const hash = urlParams.get('hash');
+    if (!hash) return false;
+    urlParams.delete('hash');
+    const paramsArray = Array.from(urlParams.entries());
+    paramsArray.sort((a, b) => a[0].localeCompare(b[0]));
+    const dataCheckString = paramsArray.map(([k, v]) => `${k}=${v}`).join('\n');
+    const secretKey = crypto.createHmac('sha256', 'WebAppData')
+      .update(process.env.TELEGRAM_BOT_TOKEN)
+      .digest();
+    const computedHash = crypto.createHmac('sha256', secretKey)
+      .update(dataCheckString)
+      .digest('hex');
+    if (computedHash !== hash) return false;
+    const authDate = parseInt(urlParams.get('auth_date'));
+    if (authDate && (Date.now() / 1000 - authDate) > 86400) return false;
+    return true;
+  } catch (error) {
+    console.error('Verify error:', error);
+    return false;
+  }
+}
+
+// ========== MIDDLEWARE ПРОВЕРКИ ПОДПИСИ ==========
+app.use('/api/tg', (req, res, next) => {
+  const botSecret = req.headers['x-bot-secret'];
+  if (botSecret && botSecret === process.env.TELEGRAM_BOT_TOKEN) {
+    return next();
+  }
+  
+  const initData = req.headers['x-telegram-init-data'];
+  if (!initData && process.env.NODE_ENV !== 'production') return next();
+  if (!initData) return res.status(401).json({ success: false, error: 'Unauthorized' });
+  if (!verifyTelegramInitData(initData)) return res.status(403).json({ success: false, error: 'Forbidden' });
+  
+  const urlParams = new URLSearchParams(initData);
+  const userParam = urlParams.get('user');
+  if (userParam) {
+    try {
+      const userObj = JSON.parse(userParam);
+      req.verifiedUserId = userObj.id.toString();
+      req.verifiedUserName = userObj.first_name || userObj.username;
+    } catch(e) {}
+  }
+  next();
+});
+
+// ========== ФУНКЦИИ БИЗНЕС-ЛОГИКИ ==========
+async function calculateOffline(userId) {
+  const user = await User.findOne({ userId });
+  if (!user || user.isBanned) return;
+  const now = Date.now();
+  const lastUpdate = user.lastMiningUpdate || now;
+  const hoursPassed = (now - lastUpdate) / (1000 * 3600);
+  if (hoursPassed < 0.0001 || hoursPassed > 720) {
+    user.lastMiningUpdate = now;
+    await user.save();
+    return;
+  }
+  let earnedTon = 0, earnedGpu = 0;
+  for (const [minerId, qty] of Object.entries(user.minerQuantities || {})) {
+    const rate = RATES[minerId];
+    if (rate && qty > 0) {
+      earnedTon += rate.ton * qty * hoursPassed;
+      earnedGpu += rate.gpu * qty * hoursPassed;
+    }
+  }
+  if (earnedTon > 0 || earnedGpu > 0) {
+    user.accumulatedTon += earnedTon;
+    user.accumulatedGpu += earnedGpu;
+  }
+  user.lastMiningUpdate = now;
+  await user.save();
+}
+
+async function giveReferralCommission(userId, claimedTon, claimedGpu) {
+  if (!claimedTon && !claimedGpu) return;
+  const user = await User.findOne({ userId });
+  if (!user || !user.referrerId) return;
+  const referrer = await User.findOne({ userId: user.referrerId });
+  if (!referrer || referrer.isBanned) return;
+  const commissionTon = claimedTon * 0.02;
+  const commissionGpu = claimedGpu * 0.02;
+  if (commissionTon > 0 || commissionGpu > 0) {
+    referrer.ton += commissionTon;
+    referrer.gpu += commissionGpu;
+    const friend = referrer.invitedFriends.find(f => f.friendId === userId);
+    if (friend) friend.earnedGpu = (friend.earnedGpu || 0) + claimedGpu;
+    await referrer.save();
+  }
+}
+
+async function ensureAdminExists() {
+  const bcrypt = require('bcrypt');
+  const existing = await Admin.findOne({ username: process.env.ADMIN_USER });
+  if (!existing && process.env.ADMIN_USER && process.env.ADMIN_PASS) {
+    const hash = await bcrypt.hash(process.env.ADMIN_PASS, 10);
+    await Admin.create({ username: process.env.ADMIN_USER, passwordHash: hash });
+    console.log('✅ Admin created');
+  }
+}
+
+// ========== TELEGRAM WEBHOOK ==========
+app.post('/telegram/webhook', async (req, res) => {
+  try {
+    await handleWebhook(req.body);
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.sendStatus(500);
+  }
+});
+
+// ========== API ЭНДПОИНТЫ ==========
+app.post('/api/exchange', async (req, res) => {
+  const { user_id, amount } = req.body;
+  if (!user_id || !amount || amount <= 0) return res.status(400).json({ success: false, error: 'Invalid data' });
+  if (req.verifiedUserId && req.verifiedUserId !== user_id) return res.status(403).json({ success: false, error: 'USER_ID_MISMATCH' });
+  try {
+    const user = await User.findOne({ userId: user_id });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    if (user.gpu < amount) return res.status(400).json({ success: false, error: 'Insufficient GPU' });
+    const EXCHANGE_RATE = 0.001;
+    const tonReceived = amount * EXCHANGE_RATE;
+    user.gpu -= amount;
+    user.ton += tonReceived;
+    await user.save();
+    res.json({ success: true, data: { ton: user.ton, gpu: user.gpu, tonReceived } });
+  } catch (error) {
+    console.error('Exchange error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== ЭНДПОИНТ ДЛЯ СТАТУСА АКЦИИ ==========
+app.get('/api/promo/status', async (req, res) => {
+  res.json({
+    success: true,
+    isActive: isPromoActive(),
+    startTime: PROMO_START_TIME,
+    endTime: PROMO_END_TIME,
+    remainingMs: Math.max(0, PROMO_END_TIME - Date.now())
+  });
+});
+
+app.post('/api/tg', async (req, res) => {
+  const { action, user_id, name, referrer_id, ton, gpu, friends, minerQuantities, amount, tonWallet, taskId, deposit_id, withdraw_id, task_user_id, minerId, quantity } = req.body;
+
+  try {
+    if (req.verifiedUserId && req.verifiedUserId !== user_id) return res.status(403).json({ success: false, error: 'USER_ID_MISMATCH' });
+    const banned = await User.findOne({ userId: user_id, isBanned: true });
+    if (banned) return res.status(403).json({ success: false, error: 'BANNED' });
+
+    if (action === 'register') {
+      let user = await User.findOne({ userId: user_id });
+      if (!user) {
+        user = new User({ userId: user_id, name: req.verifiedUserName || name || 'Игрок', minerQuantities: { basic: 1 }, referrerId: null });
+        if (referrer_id && referrer_id !== user_id && referrer_id !== 'null' && referrer_id !== 'undefined') {
+          const referrer = await User.findOne({ userId: referrer_id });
+          if (referrer && !referrer.isBanned && !referrer.isBot) {
+            user.referrerId = referrer_id;
+            const alreadyInvited = referrer.invitedFriends.some(f => f.friendId === user_id);
+            if (!alreadyInvited) {
+              referrer.invitedFriends.push({ friendId: user_id, friendName: name || user_id.slice(-5), date: new Date().toLocaleDateString(), earnedGpu: 0 });
+              referrer.friends = referrer.invitedFriends.length;
+              await referrer.save();
+            }
+          }
+        }
+        await user.save();
+        await sendTelegramNotification(`🆕 <b>Новый игрок!</b>\nID: <code>${user_id}</code>\nИмя: ${name || 'Игрок'}`);
+      } else {
+        await calculateOffline(user_id);
+        user = await User.findOne({ userId: user_id });
+      }
+      const transactions = await Deposit.find({ userId: user_id }).sort({ createdAt: -1 }).limit(50);
+      return res.json({ success: true, data: { ton: user.ton, gpu: user.gpu, friends: user.friends, invitedFriends: user.invitedFriends || [], accumulatedTon: user.accumulatedTon, accumulatedGpu: user.accumulatedGpu, minerQuantities: user.minerQuantities, transactions: transactions.map(t => ({ id: t._id, amount: t.amount, type: t.type, status: t.status, createdAt: t.createdAt })) } });
+    }
+
+    if (action === 'save') {
+      const existingUser = await User.findOne({ userId: user_id });
+      if (!existingUser) return res.json({ success: false, error: "User not found" });
+      const updateData = { friends, lastSeen: new Date() };
+      if (minerQuantities && Object.keys(minerQuantities).length > 0) updateData.minerQuantities = minerQuantities;
+      await User.findOneAndUpdate({ userId: user_id }, updateData, { upsert: false });
+      return res.json({ success: true });
+    }
+
+    if (action === 'claim') {
+      await calculateOffline(user_id);
+      const user = await User.findOne({ userId: user_id });
+      if (!user) return res.json({ success: false, error: "User not found" });
+      
+      const rewardTon = user.accumulatedTon || 0;
+      const rewardGpu = user.accumulatedGpu || 0;
+      
+      if (rewardTon === 0 && rewardGpu === 0) {
+        return res.json({ success: false, error: "NOTHING_TO_CLAIM" });
+      }
+      
+      // Всегда говорим, что нужно показать рекламу
+      return res.json({ 
+        success: false, 
+        error: "NEEDS_AD", 
+        rewardTon: rewardTon,
+        rewardGpu: rewardGpu 
+      });
+    }
+
+    // НОВЫЙ ЭНДПОИНТ: вызывается ПОСЛЕ просмотра рекламы
+    if (action === 'claimAfterAd') {
+      const user = await User.findOne({ userId: user_id });
+      if (!user) return res.json({ success: false, error: "User not found" });
+      
+      const rewardTon = user.accumulatedTon || 0;
+      const rewardGpu = user.accumulatedGpu || 0;
+      
+      if (rewardTon === 0 && rewardGpu === 0) {
+        return res.json({ success: false, error: "NOTHING_TO_CLAIM" });
+      }
+      
+      // Начисляем накопления
+      user.ton += rewardTon;
+      user.gpu += rewardGpu;
+      user.accumulatedTon = 0;
+      user.accumulatedGpu = 0;
+      await user.save();
+      
+      // Отправляем уведомление (опционально)
+      await sendTelegramNotification(
+        `🎁 <b>Вы забрали накопления после рекламы!</b>\n\n` +
+        `💰 +${rewardTon.toFixed(4)} TON\n` +
+        `💻 +${Math.floor(rewardGpu)} GPU\n\n` +
+        `Баланс: ${user.ton.toFixed(2)} TON | ${Math.floor(user.gpu)} GPU`,
+        null,
+        user_id
+      );
+      
+      await giveReferralCommission(user_id, rewardTon, rewardGpu);
+      
+      return res.json({ success: true, data: { ton: user.ton, gpu: user.gpu, accumulatedTon: 0, accumulatedGpu: 0 } });
+    }
+
+    if (action === 'buy') {
+      console.log(`🟢🔵 [ПОКУПКА] =========== НАЧАЛО ===========`);
+      console.log(`🟢 [ПОКУПКА] Пользователь: ${user_id}`);
+      console.log(`🟢 [ПОКУПКА] Майнер: ${minerId}, количество: ${quantity || 1}`);
+      
+      if (!minerId) {
+        console.log(`🔴 [ПОКУПКА] ОШИБКА: minerId не указан`);
+        return res.status(400).json({ success: false, error: "INVALID_MINER_ID" });
+      }
+      
+      // ========== ПРОВЕРКА ВРЕМЕНИ ДЛЯ ЛИМИТИРОВАННЫХ МАЙНЕРОВ ==========
+      if (minerId === 'limited_silver' || minerId === 'limited_gold' || minerId === 'limited_diamond') {
+        if (!isPromoActive()) {
+          console.log(`🔴 [ПОКУПКА] Акция на ${minerId} закончилась`);
+          return res.json({ success: false, error: "PROMO_EXPIRED" });
+        }
+      }
+      
+      const limit = MINER_LIMITS[minerId];
+      
+      const user = await User.findOne({ userId: user_id });
+      if (!user) {
+        console.log(`🔴 [ПОКУПКА] ОШИБКА: пользователь ${user_id} не найден`);
+        return res.json({ success: false, error: "User not found" });
+      }
+      
+      console.log(`🟢 [ПОКУПКА] ДО покупки:`);
+      console.log(`   - TON: ${user.ton}`);
+      console.log(`   - GPU: ${user.gpu}`);
+      console.log(`   - Майнеры:`, JSON.stringify(user.minerQuantities));
+      
+      const currentQty = user.minerQuantities?.[minerId] || 0;
+      const buyQuantity = quantity || 1;
+      
+      console.log(`🟢 [ПОКУПКА] Текущее количество ${minerId}: ${currentQty}, покупаем: ${buyQuantity}`);
+      
+      if (limit !== null && currentQty + buyQuantity > limit) {
+        console.log(`🔴 [ПОКУПКА] ЛИМИТ: ${currentQty} + ${buyQuantity} > ${limit}`);
+        return res.json({ success: false, error: "LIMIT_REACHED" });
+      }
+      
+      let totalPriceInGpu = 0;
+      let totalPriceInTon = 0;
+      
+      // ========== ЛОГИКА ДЛЯ BASIC MINER ==========
+      if (minerId === 'basic') {
+        const baseGpuPrice = 40;
+        
+        for (let i = 0; i < buyQuantity; i++) {
+          const priceForThisMiner = baseGpuPrice * Math.pow(1.15, currentQty + i);
+          totalPriceInGpu += priceForThisMiner;
+          console.log(`🟢 [BASIC MINER] Майнер #${currentQty + i + 1} стоит: ${priceForThisMiner} GPU`);
+        }
+        
+        console.log(`🟢 [BASIC MINER] Всего к оплате: ${totalPriceInGpu} GPU`);
+        
+        if (user.gpu < totalPriceInGpu) {
+          console.log(`🔴 [BASIC MINER] НЕ ХВАТАЕТ GPU: есть ${user.gpu}, нужно ${totalPriceInGpu}`);
+          return res.json({ success: false, error: "INSUFFICIENT_GPU" });
+        }
+        
+        user.gpu -= totalPriceInGpu;
+        
+      // ========== ЛОГИКА ДЛЯ ВСЕХ ОСТАЛЬНЫХ МАЙНЕРОВ ==========
+      } else {
+        const price = MINER_PRICES[minerId];
+        if (!price) {
+          console.log(`🔴 [ПОКУПКА] ОШИБКА: майнер ${minerId} не найден в MINER_PRICES`);
+          return res.json({ success: false, error: "INVALID_MINER" });
+        }
+        
+        console.log(`🟢 [ПОКУПКА] Цена: TON=${price?.ton}, GPU=${price?.gpu}`);
+        
+        const totalTonPrice = (price.ton || 0) * buyQuantity;
+        const totalGpuPrice = (price.gpu || 0) * buyQuantity;
+        
+        console.log(`🟢 [ПОКУПКА] Стоимость: TON=${totalTonPrice}, GPU=${totalGpuPrice}`);
+        
+        if (totalTonPrice > 0 && user.ton < totalTonPrice) {
+          console.log(`🔴 [ПОКУПКА] НЕ ХВАТАЕТ TON: есть ${user.ton}, нужно ${totalTonPrice}`);
+          return res.json({ success: false, error: "INSUFFICIENT_TON" });
+        }
+        if (totalGpuPrice > 0 && user.gpu < totalGpuPrice) {
+          console.log(`🔴 [ПОКУПКА] НЕ ХВАТАЕТ GPU: есть ${user.gpu}, нужно ${totalGpuPrice}`);
+          return res.json({ success: false, error: "INSUFFICIENT_GPU" });
+        }
+        
+        if (totalTonPrice > 0) user.ton -= totalTonPrice;
+        if (totalGpuPrice > 0) user.gpu -= totalGpuPrice;
+        
+        totalPriceInGpu = totalGpuPrice;
+        totalPriceInTon = totalTonPrice;
+      }
+      
+      // Добавляем майнер
+      user.minerQuantities = user.minerQuantities || {};
+      user.minerQuantities[minerId] = (user.minerQuantities[minerId] || 0) + buyQuantity;
+      user.markModified('minerQuantities');
+      await user.save();
+      
+      console.log(`🟢 [ПОКУПКА] ПОСЛЕ покупки:`);
+      console.log(`   - TON: ${user.ton}`);
+      console.log(`   - GPU: ${user.gpu}`);
+      console.log(`   - Майнеры:`, JSON.stringify(user.minerQuantities));
+      console.log(`🟢🔵 [ПОКУПКА] =========== УСПЕШНО ===========`);
+      
+      const checkUser = await User.findOne({ userId: user_id });
+      console.log(`🟢 [ПОКУПКА] ПРОВЕРКА БД: майнеры=${JSON.stringify(checkUser.minerQuantities)}`);
+      
+      return res.json({ 
+        success: true, 
+        ton: user.ton, 
+        gpu: user.gpu, 
+        minerQuantities: user.minerQuantities,
+        pricePaid: { gpu: totalPriceInGpu, ton: totalPriceInTon }
+      });
+    }
+
+    if (action === 'getReferrals') {
+      const user = await User.findOne({ userId: user_id });
+      return res.json({ success: true, referrals: user?.invitedFriends || [] });
+    }
+
+    // ========== ОБМЕН TON -> GPU ==========
+    if (action === 'exchangeTonToGpu') {
+      const { tonAmount } = req.body;
+      if (!tonAmount || tonAmount <= 0) {
+        return res.json({ success: false, error: 'INVALID_AMOUNT' });
+      }
+      
+      const user = await User.findOne({ userId: user_id });
+      if (!user) return res.json({ success: false, error: 'User not found' });
+      
+      const EXCHANGE_RATE = 0.001;
+      const gpuAmount = tonAmount / EXCHANGE_RATE;
+      
+      if (user.ton < tonAmount) {
+        return res.json({ success: false, error: 'INSUFFICIENT_BALANCE' });
+      }
+      
+      user.ton -= tonAmount;
+      user.gpu += gpuAmount;
+      await user.save();
+      
+      return res.json({ success: true, ton: user.ton, gpu: user.gpu });
+    }
+
+    // ========== ПОЛУЧИТЬ АКТИВНЫЕ СТЕЙКИ ПОЛЬЗОВАТЕЛЯ ==========
+    if (action === 'getStakes') {
+      const stakes = await Stake.find({ 
+        userId: user_id, 
+        claimed: false 
+      }).sort({ startDate: -1 });
+      
+      const activeStakes = stakes.map(stake => ({
+        id: stake._id,
+        amount: stake.amount,
+        days: stake.days,
+        rewardPercent: stake.rewardPercent,
+        startDate: stake.startDate,
+        endDate: stake.endDate,
+        rewardAmount: stake.amount * (stake.rewardPercent / 100)
+      }));
+      
+      return res.json({ success: true, stakes: activeStakes });
+    }
+
+    // ========== СОЗДАНИЕ СТЕЙКА ==========
+    if (action === 'createStake') {
+      const { amount, days } = req.body;
+      
+      // Проверяем валидность
+      if (!amount || amount < 2000) {
+        return res.json({ success: false, error: 'MIN_AMOUNT_2000' });
+      }
+      
+      let rewardPercent;
+      if (days === 7) {
+        rewardPercent = 22;
+      } else if (days === 30) {
+        rewardPercent = 101;
+      } else {
+        return res.json({ success: false, error: 'INVALID_DAYS' });
+      }
+      
+      const user = await User.findOne({ userId: user_id });
+      if (!user) return res.json({ success: false, error: 'User not found' });
+      
+      if (user.gpu < amount) {
+        return res.json({ success: false, error: 'INSUFFICIENT_GPU' });
+      }
+      
+      // Снимаем GPU с баланса
+      user.gpu -= amount;
+      await user.save();
+      
+      // Создаём стейк
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + days);
+      
+      const stake = new Stake({
+        userId: user_id,
+        amount: amount,
+        days: days,
+        rewardPercent: rewardPercent,
+        startDate: new Date(),
+        endDate: endDate,
+        claimed: false
+      });
+      await stake.save();
+      
+      // Отправляем уведомление
+      await sendTelegramNotification(
+        `🔒 <b>НОВЫЙ СТЕЙКИНГ</b>\n\n` +
+        `📦 Сумма: ${amount} GPU\n` +
+        `⏱ Период: ${days} дней\n` +
+        `🏆 Награда: ${rewardPercent}% (${(amount * rewardPercent / 100).toFixed(2)} GPU)\n` +
+        `📅 Завершится: ${endDate.toLocaleDateString()}`,
+        null,
+        user_id
+      );
+      
+      return res.json({ 
+        success: true, 
+        newGpuBalance: user.gpu,
+        stake: {
+          id: stake._id,
+          amount: stake.amount,
+          days: stake.days,
+          rewardPercent: stake.rewardPercent,
+          startDate: stake.startDate,
+          endDate: stake.endDate,
+          rewardAmount: stake.amount * (stake.rewardPercent / 100)
+        }
+      });
+    }
+
+    // ========== ЗАБРАТЬ НАГРАДУ ПО СТЕЙКУ ==========
+    if (action === 'claimStakeReward') {
+      const { stakeId } = req.body;
+      
+      const stake = await Stake.findOne({ _id: stakeId, userId: user_id, claimed: false });
+      if (!stake) {
+        return res.json({ success: false, error: 'STAKE_NOT_FOUND' });
+      }
+      
+      const now = new Date();
+      if (now < stake.endDate) {
+        return res.json({ success: false, error: 'STAKE_NOT_EXPIRED' });
+      }
+      
+      const user = await User.findOne({ userId: user_id });
+      if (!user) return res.json({ success: false, error: 'User not found' });
+      
+      const rewardAmount = stake.amount * (stake.rewardPercent / 100);
+      user.gpu += rewardAmount;
+      await user.save();
+      
+      stake.claimed = true;
+      await stake.save();
+      
+      await sendTelegramNotification(
+        `🎉 <b>СТЕЙКИНГ ЗАВЕРШЁН!</b>\n\n` +
+        `📦 Сумма: ${stake.amount} GPU\n` +
+        `⏱ Период: ${stake.days} дней\n` +
+        `🏆 Награда: +${rewardAmount.toFixed(2)} GPU\n` +
+        `💎 Итог: ${(stake.amount + rewardAmount).toFixed(2)} GPU`,
+        null,
+        user_id
+      );
+      
+      return res.json({ 
+        success: true, 
+        newGpuBalance: user.gpu,
+        rewardAmount: rewardAmount
+      });
+    }
+
+    // ========== СОЗДАНИЕ ДЕПОЗИТА ==========
+    if (action === 'createDeposit') {
+      const pendingCount = await Deposit.countDocuments({ userId: user_id, status: 'pending', type: 'deposit' });
+      if (pendingCount >= 2) {
+        return res.status(400).json({ success: false, error: 'LIMIT_EXCEEDED' });
+      }
+      
+      if (!amount || amount <= 0 || amount < 1 || amount > 10000) {
+        return res.status(400).json({ success: false, error: 'INVALID_AMOUNT' });
+      }
+      
+      const deposit = new Deposit({ 
+        userId: user_id, 
+        userName: name || 'Игрок', 
+        amount: Number(amount), 
+        wallet: process.env.TON_WALLET || 'EQD...ваш_кошелек', 
+        comment: `DEPOSIT_${user_id}_${Date.now()}`,
+        type: 'deposit',
+        status: 'pending',
+        createdAt: new Date()
+      });
+      await deposit.save();
+      
+      const adminMessage = 
+        `💎 <b>НОВАЯ ЗАЯВКА НА ПОПОЛНЕНИЕ</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 <b>Пользователь:</b> <code>${user_id}</code>\n` +
+        `📛 <b>Имя:</b> ${name || 'Игрок'}\n` +
+        `💰 <b>Сумма:</b> ${amount} TON\n` +
+        `🆔 <b>ID заявки:</b> <code>${deposit._id}</code>\n` +
+        `🕐 <b>Время:</b> ${new Date().toLocaleString()}\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `⬇️ <b>Действия:</b>`;
+      
+      const keyboard = [[
+        { text: "✅ ПОДТВЕРДИТЬ", callback_data: `approve:deposit:${deposit._id}` },
+        { text: "❌ ОТКЛОНИТЬ", callback_data: `reject:deposit:${deposit._id}` }
+      ]];
+      
+      await sendTelegramNotification(adminMessage, keyboard);
+      console.log(`💎 Новая заявка на пополнение: ${deposit._id} от ${user_id} на сумму ${amount} TON`);
+      
+      return res.json({ 
+        success: true, 
+        deposit: { 
+          id: deposit._id, 
+          amount: Number(amount), 
+          wallet: process.env.TON_WALLET || 'EQD...ваш_кошелек',
+          comment: deposit.comment,
+          status: 'pending'
+        } 
+      });
+    }
+
+    // ========== ПОДТВЕРЖДЕНИЕ ДЕПОЗИТА ==========
+    if (action === 'confirmDeposit') {
+      const deposit = await Deposit.findById(deposit_id);
+      if (!deposit || deposit.status !== 'pending') return res.json({ success: false });
+      await User.updateOne({ userId: deposit.userId }, { $inc: { ton: deposit.amount, totalDeposited: deposit.amount } });
+      deposit.status = 'completed';
+      deposit.processedAt = new Date();
+      deposit.processedBy = 'admin';
+      await deposit.save();
+      
+      await sendTelegramNotification(`✅ <b>Пополнение подтверждено!</b>\nПользователь: <code>${deposit.userId}</code>\nСумма: ${deposit.amount} TON зачислена.`);
+      
+      return res.json({ success: true });
+    }
+
+    // ========== ОТКЛОНЕНИЕ ДЕПОЗИТА ==========
+    if (action === 'rejectDeposit') {
+      const deposit = await Deposit.findById(deposit_id);
+      if (!deposit || deposit.status !== 'pending') return res.json({ success: false });
+      deposit.status = 'cancelled';
+      deposit.processedAt = new Date();
+      deposit.processedBy = 'admin';
+      await deposit.save();
+      
+      await sendTelegramNotification(`❌ <b>Пополнение отклонено!</b>\nПользователь: <code>${deposit.userId}</code>\nСумма: ${deposit.amount} TON`);
+      
+      console.log(`❌ Депозит ${deposit_id} отклонён`);
+      return res.json({ success: true });
+    }
+
+    // ========== СОЗДАНИЕ ВЫВОДА ==========
+    if (action === 'createWithdraw') {
+      if (!amount || amount <= 0 || amount < 1 || amount > 5000) {
+        return res.json({ success: false, error: 'INVALID_AMOUNT' });
+      }
+      if (!tonWallet || tonWallet.length < 10) {
+        return res.json({ success: false, error: 'INVALID_WALLET' });
+      }
+      
+      const pendingCount = await Deposit.countDocuments({ userId: user_id, status: 'pending', type: 'withdraw' });
+      if (pendingCount >= 2) {
+        return res.json({ success: false, error: 'LIMIT_EXCEEDED' });
+      }
+      
+      const user = await User.findOne({ userId: user_id });
+      if (!user || user.ton < amount) {
+        return res.json({ success: false, error: 'INSUFFICIENT_BALANCE' });
+      }
+      
+      user.ton -= amount;
+      user.totalWithdrawn = (user.totalWithdrawn || 0) + amount;
+      await user.save();
+      
+      const withdraw = new Deposit({ 
+        userId: user_id, 
+        userName: name || 'Игрок', 
+        amount: Number(amount), 
+        wallet: tonWallet,
+        comment: `WITHDRAW_${user_id}_${Date.now()}`,
+        type: 'withdraw',
+        status: 'pending',
+        createdAt: new Date()
+      });
+      await withdraw.save();
+      
+      const adminMessage = 
+        `📤 <b>НОВАЯ ЗАЯВКА НА ВЫВОД</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 <b>Пользователь:</b> <code>${user_id}</code>\n` +
+        `📛 <b>Имя:</b> ${name || 'Игрок'}\n` +
+        `💰 <b>Сумма:</b> ${amount} TON\n` +
+        `💳 <b>Кошелёк:</b> <code>${tonWallet}</code>\n` +
+        `🆔 <b>ID заявки:</b> <code>${withdraw._id}</code>\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `⬇️ <b>Действия:</b>`;
+      
+      const keyboard = [[
+        { text: "✅ ПОДТВЕРДИТЬ", callback_data: `approve:withdraw:${withdraw._id}` },
+        { text: "❌ ОТКЛОНИТЬ", callback_data: `reject:withdraw:${withdraw._id}` }
+      ]];
+      
+      await sendTelegramNotification(adminMessage, keyboard);
+      console.log(`📤 Новая заявка на вывод: ${withdraw._id} от ${user_id} на сумму ${amount} TON`);
+      
+      return res.json({ 
+        success: true, 
+        withdraw: { 
+          id: withdraw._id, 
+          amount: Number(amount), 
+          wallet: tonWallet,
+          status: 'pending'
+        } 
+      });
+    }
+
+    // ========== ПОДТВЕРЖДЕНИЕ ВЫВОДА ==========
+    if (action === 'approveWithdraw') {
+      console.log(`📤 Получен запрос на подтверждение вывода: ${withdraw_id}`);
+      
+      const withdraw = await Deposit.findById(withdraw_id);
+      if (!withdraw || withdraw.status !== 'pending') return res.json({ success: false });
+      if (withdraw.type !== 'withdraw') return res.json({ success: false });
+      
+      withdraw.status = 'completed';
+      withdraw.processedAt = new Date();
+      withdraw.processedBy = 'admin';
+      await withdraw.save();
+      
+      await sendTelegramNotification(
+        `✅ <b>Ваш вывод подтверждён!</b>\n💰 Сумма: ${withdraw.amount} TON`,
+        null,
+        withdraw.userId
+      );
+      
+      console.log(`✅ Вывод ${withdraw_id} подтверждён`);
+      return res.json({ success: true });
+    }
+
+    // ========== ОТКЛОНЕНИЕ ВЫВОДА ==========
+    if (action === 'rejectWithdraw') {
+      console.log(`📤 Получен запрос на отклонение вывода: ${withdraw_id}`);
+      
+      const withdraw = await Deposit.findById(withdraw_id);
+      if (!withdraw || withdraw.status !== 'pending') return res.json({ success: false });
+      if (withdraw.type !== 'withdraw') return res.json({ success: false });
+      
+      const user = await User.findOne({ userId: withdraw.userId });
+      if (user) {
+        user.ton += withdraw.amount;
+        user.totalWithdrawn = Math.max(0, (user.totalWithdrawn || 0) - withdraw.amount);
+        await user.save();
+      }
+      
+      withdraw.status = 'cancelled';
+      withdraw.processedAt = new Date();
+      withdraw.processedBy = 'admin';
+      await withdraw.save();
+      
+      await sendTelegramNotification(
+        `❌ <b>Ваш вывод отклонён!</b>\n💰 Сумма: ${withdraw.amount} TON возвращена на баланс.`,
+        null,
+        withdraw.userId
+      );
+      
+      console.log(`❌ Вывод ${withdraw_id} отклонён`);
+      return res.json({ success: true });
+    }
+
+    // ========== ЗАДАНИЯ ==========
+    if (action === 'tasks/list') {
+      const tasks = await Task.find({ isActive: true }).sort({ order: 1 });
+      const completed = await UserTask.find({ userId: user_id, claimed: true });
+      const pending = await UserTask.find({ userId: user_id, claimed: false });
+      const result = tasks.map(t => ({ id: t.id, title: t.title, description: t.description, rewardTon: t.rewardTon, rewardGpu: t.rewardGpu, taskUrl: t.taskUrl, completed: completed.some(c => c.taskId === t.id), pending: pending.some(p => p.taskId === t.id) }));
+      return res.json({ success: true, tasks: result });
+    }
+
+    if (action === 'tasks/complete') {
+      const task = await Task.findOne({ id: taskId });
+      if (!task) return res.json({ success: false });
+      const existing = await UserTask.findOne({ userId: user_id, taskId, claimed: true });
+      if (existing) return res.json({ success: false });
+      const pending = await UserTask.findOne({ userId: user_id, taskId, claimed: false });
+      if (pending) return res.json({ success: false });
+      const userTask = new UserTask({ userId: user_id, taskId, completedAt: new Date(), claimed: false });
+      await userTask.save();
+      const user = await User.findOne({ userId: user_id });
+      await sendTelegramNotification(`📋 <b>Новое выполненное задание!</b>\n👤 Пользователь: <code>${user_id}</code> (${user?.name || 'Игрок'})\n📌 Задание: ${task.title}\n🎁 Награда: +${task.rewardTon} TON, +${task.rewardGpu} GPU`, [[{ text: "✅ Подтвердить", callback_data: `approve:task:${userTask._id}` }, { text: "❌ Отклонить", callback_data: `reject:task:${userTask._id}` }]]);
+      return res.json({ success: true });
+    }
+
+    // ========== ПОДТВЕРЖДЕНИЕ ЗАДАНИЯ ==========
+    if (action === 'approveTask') {
+      console.log(`📋 Получен запрос на подтверждение задания: ${task_user_id}`);
+      
+      const userTask = await UserTask.findById(task_user_id);
+      if (!userTask) {
+        return res.json({ success: false, error: 'TASK_NOT_FOUND' });
+      }
+      if (userTask.claimed) {
+        return res.json({ success: false, error: 'ALREADY_CLAIMED' });
+      }
+      
+      const task = await Task.findOne({ id: userTask.taskId });
+      const user = await User.findOne({ userId: userTask.userId });
+      
+      if (user && task) {
+        user.ton += task.rewardTon;
+        user.gpu += task.rewardGpu;
+        await user.save();
+        await giveReferralCommission(userTask.userId, task.rewardTon, task.rewardGpu);
+        console.log(`✅ Пользователю ${userTask.userId} начислено +${task.rewardTon} TON и +${task.rewardGpu} GPU за задание ${task.title}`);
+      }
+      
+      userTask.claimed = true;
+      await userTask.save();
+      
+      await sendTelegramNotification(
+        `✅ <b>Задание выполнено!</b>\n📌 Задание: ${task?.title || 'Задание'}\n🎁 Награда: +${task?.rewardTon || 0} TON, +${task?.rewardGpu || 0} GPU`,
+        null,
+        userTask.userId
+      );
+      
+      return res.json({ success: true });
+    }
+
+    // ========== ОТКЛОНЕНИЕ ЗАДАНИЯ ==========
+    if (action === 'rejectTask') {
+      console.log(`📋 Получен запрос на отклонение задания: ${task_user_id}`);
+      
+      const userTask = await UserTask.findById(task_user_id);
+      if (!userTask) {
+        return res.json({ success: false, error: 'TASK_NOT_FOUND' });
+      }
+      if (userTask.claimed) {
+        return res.json({ success: false, error: 'ALREADY_PROCESSED' });
+      }
+      
+      await UserTask.findByIdAndDelete(task_user_id);
+      
+      await sendTelegramNotification(
+        `❌ <b>Задание отклонено!</b>\n📌 Попробуйте выполнить задание заново.`,
+        null,
+        userTask.userId
+      );
+      
+      console.log(`❌ Задание ${task_user_id} отклонено, запись удалена`);
+      return res.json({ success: true });
+    }
+
+    return res.status(400).json({ success: false });
+  } catch (error) {
+    console.error('API Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== АДМИН-ПАНЕЛЬ ==========
+app.post('/admin/login', async (req, res) => {
+  const { username, password } = req.body;
+  const bcrypt = require('bcrypt');
+  const admin = await Admin.findOne({ username });
+  if (admin && await bcrypt.compare(password, admin.passwordHash)) {
+    req.session.admin = { username: admin.username, role: admin.role };
+    return res.json({ success: true });
+  }
+  return res.status(401).json({ success: false });
+});
+
+app.get('/admin/check', (req, res) => {
+  res.json({ loggedIn: !!req.session.admin });
+});
+
+app.post('/admin/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
+});
+
+app.get('/admin/api/users', async (req, res) => {
+  const users = await User.find().sort({ createdAt: -1 });
+  res.json(users);
+});
+
+app.get('/admin/api/users/search', async (req, res) => {
+  const { q } = req.query;
+  const users = await User.find({ $or: [{ userId: { $regex: q, $options: 'i' } }, { name: { $regex: q, $options: 'i' } }] }).limit(50);
+  res.json(users);
+});
+
+app.post('/admin/api/user/giveGpu', async (req, res) => {
+  const { userId, amount } = req.body;
+  const user = await User.findOne({ userId });
+  if (!user) return res.json({ success: false });
+  user.gpu += amount;
+  await user.save();
+  res.json({ success: true });
+});
+
+app.post('/admin/api/user/giveTon', async (req, res) => {
+  const { userId, amount } = req.body;
+  const user = await User.findOne({ userId });
+  if (!user) return res.json({ success: false });
+  user.ton += amount;
+  await user.save();
+  res.json({ success: true });
+});
+
+app.post('/admin/api/user/giveMiner', async (req, res) => {
+  const { userId, minerId, quantity } = req.body;
+  console.log(`📦 [ВЫДАЧА МАЙНЕРА] Пользователь: ${userId}, Майнер: ${minerId}, Кол-во: ${quantity}`);
+  
+  const validMiners = ['basic', 'normal', 'pro', 'ultra', 'legendary', 'minex', 'friend', 'bro', 'nexus', 'limited_silver', 'limited_gold', 'limited_diamond'];
+  
+  if (!validMiners.includes(minerId)) {
+    console.log(`❌ [ВЫДАЧА МАЙНЕРА] Неверный ID майнера: ${minerId}`);
+    return res.json({ success: false, error: 'Invalid miner ID' });
+  }
+  
+  const user = await User.findOne({ userId });
+  if (!user) {
+    console.log(`❌ [ВЫДАЧА МАЙНЕРА] Пользователь не найден: ${userId}`);
+    return res.json({ success: false, error: 'User not found' });
+  }
+  
+  user.minerQuantities = user.minerQuantities || {};
+  const oldQuantity = user.minerQuantities[minerId] || 0;
+  user.minerQuantities[minerId] = oldQuantity + (quantity || 1);
+  user.markModified('minerQuantities');
+  await user.save();
+  
+  console.log(`✅ [ВЫДАЧА МАЙНЕРА] Успешно! ${minerId}: ${oldQuantity} → ${user.minerQuantities[minerId]}`);
+  
+  res.json({ 
+    success: true, 
+    message: `Выдано ${quantity || 1} ${minerId}`,
+    newQuantity: user.minerQuantities[minerId]
+  });
+});
+
+app.post('/admin/api/user/setBalance', async (req, res) => {
+  const { userId, ton, gpu } = req.body;
+  await User.findOneAndUpdate({ userId }, { ton, gpu });
+  res.json({ success: true });
+});
+
+app.post('/admin/api/user/ban', async (req, res) => {
+  const { userId, reason } = req.body;
+  await User.findOneAndUpdate({ userId }, { isBanned: true, banReason: reason });
+  res.json({ success: true });
+});
+
+app.post('/admin/api/user/unban', async (req, res) => {
+  const { userId } = req.body;
+  await User.findOneAndUpdate({ userId }, { isBanned: false, banReason: null });
+  res.json({ success: true });
+});
+
+app.get('/admin/api/deposits/pending', async (req, res) => {
+  const deposits = await Deposit.find({ status: 'pending', type: 'deposit' }).sort('-createdAt');
+  res.json(deposits);
+});
+
+app.get('/admin/api/withdraws/pending', async (req, res) => {
+  const withdraws = await Deposit.find({ status: 'pending', type: 'withdraw' }).sort('-createdAt');
+  res.json(withdraws);
+});
+
+app.post('/admin/api/deposit/approve', async (req, res) => {
+  const { id } = req.body;
+  const deposit = await Deposit.findById(id);
+  if (!deposit || deposit.status !== 'pending') return res.json({ success: false });
+  await User.updateOne({ userId: deposit.userId }, { $inc: { ton: deposit.amount } });
+  deposit.status = 'completed';
+  await deposit.save();
+  res.json({ success: true });
+});
+
+app.post('/admin/api/withdraw/approve', async (req, res) => {
+  const { id } = req.body;
+  const withdraw = await Deposit.findById(id);
+  if (!withdraw || withdraw.status !== 'pending') return res.json({ success: false });
+  withdraw.status = 'completed';
+  await withdraw.save();
+  res.json({ success: true });
+});
+
+app.post('/admin/api/withdraw/reject', async (req, res) => {
+  const { id } = req.body;
+  const withdraw = await Deposit.findById(id);
+  if (!withdraw || withdraw.status !== 'pending') return res.json({ success: false });
+  await User.updateOne({ userId: withdraw.userId }, { $inc: { ton: withdraw.amount } });
+  withdraw.status = 'cancelled';
+  await withdraw.save();
+  res.json({ success: true });
+});
+
+app.get('/admin/api/tasks', async (req, res) => {
+  const tasks = await Task.find().sort({ order: 1 });
+  res.json(tasks);
+});
+
+app.post('/admin/api/tasks/save', async (req, res) => {
+  const { id, title, description, rewardTon, rewardGpu, type, taskUrl, isDaily, order } = req.body;
+  await Task.findOneAndUpdate({ id: id || `task_${Date.now()}` }, { title, description, rewardTon, rewardGpu, type, taskUrl, isDaily, order, isActive: true }, { upsert: true });
+  res.json({ success: true });
+});
+
+app.post('/admin/api/tasks/delete', async (req, res) => {
+  const { id } = req.body;
+  await Task.findOneAndDelete({ id });
+  res.json({ success: true });
+});
+
+app.get('/admin/api/tasks/pending', async (req, res) => {
+  const pending = await UserTask.find({ claimed: false });
+  const result = [];
+  for (const p of pending) {
+    const task = await Task.findOne({ id: p.taskId });
+    const user = await User.findOne({ userId: p.userId });
+    if (task && user) {
+      result.push({ id: p._id, userId: p.userId, userName: user.name, taskTitle: task.title, rewardTon: task.rewardTon, rewardGpu: task.rewardGpu });
+    }
+  }
+  res.json(result);
+});
+
+app.post('/admin/api/tasks/approve', async (req, res) => {
+  const { id } = req.body;
+  const userTask = await UserTask.findById(id);
+  if (!userTask || userTask.claimed) return res.json({ success: false });
+  const task = await Task.findOne({ id: userTask.taskId });
+  const user = await User.findOne({ userId: userTask.userId });
+  if (user && task) {
+    user.ton += task.rewardTon;
+    user.gpu += task.rewardGpu;
+    await user.save();
+    await giveReferralCommission(userTask.userId, task.rewardTon, task.rewardGpu);
+  }
+  userTask.claimed = true;
+  await userTask.save();
+  res.json({ success: true });
+});
+
+// ========== ЭНДПОИНТЫ ДЛЯ РЕФЕРАЛОВ ==========
+app.get('/admin/api/referrals/last24h', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  try {
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    const newUsers = await User.find({
+      createdAt: { $gte: twentyFourHoursAgo },
+      referrerId: { $ne: null, $exists: true }
+    }, 'userId name referrerId createdAt');
+    
+    const referrals = newUsers.map(user => ({
+      userId: user.userId,
+      userName: user.name,
+      referredBy: user.referrerId,
+      joinedAt: user.createdAt
+    }));
+    
+    res.json(referrals);
+  } catch (error) {
+    console.error('Error in /admin/api/referrals/last24h:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/admin/api/user/:userId/referrals', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  try {
+    const { userId } = req.params;
+    
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const referrals = user.invitedFriends || [];
+    
+    const enrichedReferrals = await Promise.all(referrals.map(async (ref) => {
+      const invitedUser = await User.findOne({ userId: ref.friendId });
+      return {
+        userId: ref.friendId,
+        name: ref.friendName,
+        joinedAt: invitedUser?.createdAt || ref.date,
+        earnedGpu: ref.earnedGpu || 0
+      };
+    }));
+    
+    res.json(enrichedReferrals);
+  } catch (error) {
+    console.error('Error in /admin/api/user/:userId/referrals:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== РАССЫЛКА ==========
+let broadcastState = {
+  isRunning: false,
+  total: 0,
+  sent: 0,
+  failed: 0,
+  users: []
+};
+
+app.post('/admin/api/broadcast', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  const { message, parse_mode = 'HTML', confirm } = req.body;
+  
+  if (!message || message.trim().length === 0) {
+    return res.status(400).json({ success: false, error: 'Message is required' });
+  }
+  
+  if (!confirm) {
+    const userCount = await User.countDocuments({ isBanned: false });
+    return res.json({ success: true, preview: true, userCount });
+  }
+  
+  if (broadcastState.isRunning) {
+    return res.status(400).json({ success: false, error: 'Broadcast already running' });
+  }
+  
+  try {
+    const users = await User.find({ isBanned: false }, 'userId name');
+    
+    broadcastState = {
+      isRunning: true,
+      total: users.length,
+      sent: 0,
+      failed: 0,
+      users: users
+    };
+    
+    res.json({ success: true, message: 'Broadcast started', total: users.length });
+    
+    for (const user of broadcastState.users) {
+      if (!broadcastState.isRunning) break;
+      
+      try {
+        await sendTelegramNotification(message, null, user.userId);
+        broadcastState.sent++;
+      } catch (err) {
+        broadcastState.failed++;
+        console.error(`Failed to send to ${user.userId}:`, err.message);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    await sendTelegramNotification(
+      `✅ <b>РАССЫЛКА ЗАВЕРШЕНА</b>\n\n📨 Отправлено: ${broadcastState.sent}\n❌ Ошибок: ${broadcastState.failed}\n👥 Всего: ${broadcastState.total}`,
+      null,
+      process.env.ADMIN_CHAT_ID
+    );
+    
+    broadcastState.isRunning = false;
+    
+  } catch (error) {
+    console.error('Broadcast error:', error);
+    broadcastState.isRunning = false;
+    await sendTelegramNotification(`❌ Ошибка рассылки: ${error.message}`, null, process.env.ADMIN_CHAT_ID);
+  }
+});
+
+app.get('/admin/api/broadcast/status', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false });
+  }
+  
+  res.json({
+    isRunning: broadcastState.isRunning,
+    total: broadcastState.total,
+    sent: broadcastState.sent,
+    failed: broadcastState.failed,
+    completed: !broadcastState.isRunning && broadcastState.total > 0
+  });
+});
+
+app.post('/admin/api/broadcast/stop', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false });
+  }
+  
+  if (!broadcastState.isRunning) {
+    return res.status(400).json({ success: false, error: 'No broadcast running' });
+  }
+  
+  broadcastState.isRunning = false;
+  res.json({ success: true });
+});
+
+// ========== ADSGRAM WEBHOOK ==========
+app.get('/api/adsgram/reward', async (req, res) => {
+  const userId = req.query.userid;
+  
+  console.log(`📢 [ADSGRAM] Пользователь ${userId} посмотрел рекламу`);
+  
+  if (!userId) {
+    return res.status(400).json({ success: false, error: 'userId required' });
+  }
+  
+  // Здесь можно начислить бонус за просмотр рекламы (опционально)
+  // Например, +0.1 TON дополнительно
+  
+  res.json({ success: true });
+});
+
+// ========== ПЛАНИРОВЩИК ДЛЯ АВТО-ВЫПЛАТ СТЕЙКИНГА ==========
+async function processExpiredStakes() {
+  console.log("🔄 Проверка истёкших стейков...");
+  const now = new Date();
+  
+  // Находим все невостребованные стейки, у которых endDate уже прошёл
+  const expiredStakes = await Stake.find({ claimed: false, endDate: { $lte: now } });
+  
+  for (const stake of expiredStakes) {
+    const user = await User.findOne({ userId: stake.userId });
+    if (user) {
+      const rewardAmount = stake.amount * (stake.rewardPercent / 100);
+      user.gpu += rewardAmount;
+      await user.save();
+      
+      // Отмечаем стейк как выплаченный, чтобы не начислить повторно
+      stake.claimed = true;
+      await stake.save();
+      
+      console.log(`✅ Стейк #${stake._id} для ${stake.userId} завершён. Начислено +${rewardAmount} GPU`);
+      
+      // Опционально: отправить уведомление пользователю
+      await sendTelegramNotification(
+        `🎉 <b>Ваш стейкинг завершён!</b>\n\n` +
+        `📦 Сумма: ${stake.amount} GPU\n` +
+        `🏆 Награда: +${rewardAmount.toFixed(2)} GPU\n` +
+        `💎 Общая сумма: ${(stake.amount + rewardAmount).toFixed(2)} GPU зачислена на ваш баланс.`,
+        null,
+        stake.userId
+      );
+    } else {
+      console.log(`⚠️ Пользователь ${stake.userId} для стейка #${stake._id} не найден.`);
+    }
+  }
+}
+
+// ========== АДМИН-ЭНДПОИНТЫ ДЛЯ СТЕЙКИНГА ==========
+
+// Получить все стейки пользователя (для админ-панели)
+app.get('/admin/api/user/:userId/stakes', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  try {
+    const { userId } = req.params;
+    const stakes = await Stake.find({ userId }).sort({ startDate: -1 });
+    res.json({ success: true, stakes });
+  } catch (error) {
+    console.error('Error loading stakes:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Принудительная выдача награды по стейку (админ)
+app.post('/admin/api/stake/force-claim', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  try {
+    const { stakeId, userId } = req.body;
+    
+    const stake = await Stake.findOne({ _id: stakeId, userId });
+    if (!stake) {
+      return res.json({ success: false, error: 'STAKE_NOT_FOUND' });
+    }
+    
+    if (stake.claimed) {
+      return res.json({ success: false, error: 'ALREADY_CLAIMED' });
+    }
+    
+    const user = await User.findOne({ userId });
+    if (!user) {
+      return res.json({ success: false, error: 'USER_NOT_FOUND' });
+    }
+    
+    const rewardAmount = stake.amount * (stake.rewardPercent / 100);
+    user.gpu += rewardAmount;
+    await user.save();
+    
+    stake.claimed = true;
+    await stake.save();
+    
+    await sendTelegramNotification(
+      `🎉 <b>Стейкинг завершён (администратор выдал награду)!</b>\n\n` +
+      `📦 Сумма: ${stake.amount.toFixed(2)} GPU\n` +
+      `⏱ Период: ${stake.days} дней\n` +
+      `🏆 Награда: +${rewardAmount.toFixed(2)} GPU`,
+      null,
+      userId
+    );
+    
+    res.json({ success: true, message: `Выдано ${rewardAmount.toFixed(2)} GPU пользователю ${user.name}` });
+  } catch (error) {
+    console.error('Error force claiming stake:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== ПОЛУЧИТЬ ВСЕ СТЕЙКИ (ДЛЯ АДМИН-ПАНЕЛИ) ==========
+app.get('/admin/api/all-stakes', async (req, res) => {
+  if (!req.session.admin) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  
+  try {
+    const stakes = await Stake.find({}).sort({ startDate: -1 });
+    res.json({ success: true, stakes });
+  } catch (error) {
+    console.error('Error loading all stakes:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ========== ЗАПУСК ==========
+const PORT = process.env.PORT || 8080;
+app.use(express.static(__dirname));
+
+mongoose.connect(process.env.MONGODB_URL).then(async () => {
+  console.log('✅ Connected to MongoDB');
+  await ensureAdminExists();
+  app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+  
+  // Запускаем проверку стейков каждые 10 минут
+  setInterval(processExpiredStakes, 10 * 60 * 1000);
+  // И сразу один раз при запуске сервера, чтобы обработать уже существующие
+  setTimeout(processExpiredStakes, 10000);
+}).catch(err => console.error('❌ MongoDB error:', err));
+
+// ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+const requestLimits = new Map();
+const CLAIM_LIMITS = new Map();
+
+setInterval(() => {
+  const now = Date.now();
+  const CLEANUP_AFTER_MS = 60000;
+  for (const [key, data] of requestLimits.entries()) {
+    if (data.times && data.times.length > 0) {
+      const oldestTime = data.times[0];
+      if (now - oldestTime > CLEANUP_AFTER_MS) requestLimits.delete(key);
+    } else requestLimits.delete(key);
+  }
+  for (const [key, data] of CLAIM_LIMITS.entries()) {
+    if (now - data.lastClaim > CLEANUP_AFTER_MS) CLAIM_LIMITS.delete(key);
+  }
+}, 30000);
+
+function checkRateLimit(userId, action, limitMs = 1000, maxRequests = 5) {
+  const key = `${userId}:${action}`;
+  const now = Date.now();
+  const userData = requestLimits.get(key);
+  if (userData) {
+    const recentRequests = userData.times.filter(t => now - t < limitMs);
+    userData.times = recentRequests;
+    if (recentRequests.length >= maxRequests) return false;
+    userData.times.push(now);
+  } else {
+    requestLimits.set(key, { times: [now] });
+  }
+  return true;
+}
+
+function checkClaimRateLimit(userId) {
+  const key = `claim:${userId}`;
+  const now = Date.now();
+  const userData = CLAIM_LIMITS.get(key);
+  if (userData && (now - userData.lastClaim) < 30000) return false;
+  CLAIM_LIMITS.set(key, { lastClaim: now });
+  return true;
+}

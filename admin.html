@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Admin Panel | CryptoGPU</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0B0E1A; color: #fff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 16px 12px 80px; }
+  .header { background: linear-gradient(135deg, #1A2A5E, #0F1A3A); border-radius: 24px; padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+  .header h1 { font-size: 1.4rem; display: flex; align-items: center; gap: 8px; }
+  .logout-btn { background: #DC2626; border: none; padding: 8px 16px; border-radius: 40px; color: white; font-weight: bold; cursor: pointer; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: rgba(26, 31, 53, 0.9); border-radius: 20px; padding: 12px; text-align: center; }
+  .stat-value { font-size: 24px; font-weight: bold; color: #00D4FF; }
+  .stat-label { font-size: 11px; color: #8EA3D4; margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; background: #0B0E1A; padding: 8px 0; overflow-x: auto; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab-btn { background: #1A1F35; border: none; padding: 10px 16px; border-radius: 40px; color: #8EA3D4; font-size: 13px; white-space: nowrap; cursor: pointer; }
+  .tab-btn.active { background: #00D4FF; color: #0B0E1A; font-weight: bold; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .search-box { width: 100%; background: #1A1F35; border: 1px solid #00D4FF; border-radius: 40px; padding: 12px 16px; color: #fff; margin-bottom: 16px; font-size: 14px; }
+  .user-card, .request-card, .task-card, .top-card, .stake-card { background: #1A1F35; border-radius: 20px; padding: 14px; margin-bottom: 12px; }
+  .user-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+  .user-name { font-weight: bold; font-size: 16px; }
+  .user-id { font-size: 10px; color: #8EA3D4; font-family: monospace; }
+  .user-stats { font-size: 12px; color: #A0B4E0; margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 12px; }
+  .button-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .btn { background: #1A2A5E; border: none; padding: 8px 14px; border-radius: 40px; color: white; font-size: 12px; cursor: pointer; }
+  .btn-success { background: #00A86B; }
+  .btn-danger { background: #DC2626; }
+  .btn-warning { background: #FF8C00; }
+  .btn-info { background: #00D4FF; color: #0B0E1A; }
+  .btn-purple { background: #8B5CF6; }
+  .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 1000; }
+  .modal-content { background: #1A1F35; border-radius: 28px; padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
+  .modal-content input, .modal-content select, .modal-content textarea { width: 100%; background: #0B0E1A; border: 1px solid #00D4FF; border-radius: 16px; padding: 12px; margin: 8px 0; color: #fff; }
+  .modal-content button { margin-top: 12px; width: 100%; }
+  .badge { background: #00A86B; padding: 4px 10px; border-radius: 20px; font-size: 10px; }
+  .badge-banned { background: #DC2626; }
+  .badge-gold { background: #F59E0B; color: #0B0E1A; }
+  .badge-silver { background: #9CA3AF; color: #0B0E1A; }
+  .badge-bronze { background: #CD853F; color: #0B0E1A; }
+  .badge-active { background: #00A86B; }
+  .badge-completed { background: #00D4FF; color: #0B0E1A; }
+  .badge-claimed { background: #6B7CA8; }
+  .miners-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .miner-tag { background: #00D4FF20; padding: 4px 8px; border-radius: 20px; font-size: 11px; }
+  .pending-count { background: #FF8C00; border-radius: 20px; padding: 2px 8px; font-size: 11px; margin-left: 8px; }
+  .footer { position: fixed; bottom: 0; left: 0; right: 0; background: #0B0E1A; padding: 10px; text-align: center; font-size: 10px; color: #5A6A8A; }
+  .referral-stats { font-size: 11px; color: #00FFAA; margin-top: 4px; }
+  .progress-bar-bg { height: 6px; background: #0B0E1A; border-radius: 10px; overflow: hidden; margin: 8px 0; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #00D4FF, #00FFAA); border-radius: 10px; transition: width 0.3s; }
+  .stake-info { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .stake-amount { color: #00FFAA; font-weight: bold; }
+  .stake-reward { color: #FFD700; }
+  
+  /* Стили для рассылки */
+  .broadcast-stats { background: #0B0E1A; border-radius: 16px; padding: 12px; margin-bottom: 16px; }
+  .broadcast-stats div { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .preview-box { background: #0B0E1A; border-radius: 16px; padding: 16px; margin-top: 16px; border-left: 3px solid #00FFAA; }
+  .preview-box h4 { color: #00FFAA; margin-bottom: 8px; font-size: 13px; }
+  .preview-content { font-size: 13px; line-height: 1.4; color: #ddd; }
+  .format-buttons { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .format-btn { background: #00D4FF20; border: 1px solid #00D4FF40; border-radius: 20px; padding: 6px 12px; font-size: 11px; cursor: pointer; }
+  .format-btn:hover { background: #00D4FF40; }
+  textarea { width: 100%; background: #0B0E1A; border: 1px solid #00D4FF; border-radius: 16px; padding: 12px; color: #fff; font-family: monospace; font-size: 13px; resize: vertical; margin-bottom: 12px; }
+  .broadcast-progress { background: #1A1F35; border-radius: 16px; padding: 16px; margin-top: 16px; display: none; }
+  .progress-bar { width: 100%; height: 6px; background: #0B0E1A; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+  .progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00D4FF, #00FFAA); transition: width 0.3s; }
+  
+  .top-1 { border-left: 4px solid #F59E0B; }
+  .top-2 { border-left: 4px solid #9CA3AF; }
+  .top-3 { border-left: 4px solid #CD853F; }
+  
+  .filter-group { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn { background: #1A1F35; border: 1px solid #00D4FF40; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
+  .filter-btn.active { background: #00D4FF; color: #0B0E1A; }
+</style>
+</head>
+<body>
+
+<div id="loginPanel" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+  <div style="background: #1A1F35; border-radius: 28px; padding: 32px; width: 100%; max-width: 300px;">
+    <h2 style="text-align: center; margin-bottom: 20px;">🔐 Admin Login</h2>
+    <input type="text" id="loginUsername" placeholder="Username" style="width: 100%; background: #0B0E1A; border: 1px solid #00D4FF; border-radius: 16px; padding: 12px; margin-bottom: 12px; color: #fff;">
+    <input type="password" id="loginPassword" placeholder="Password" style="width: 100%; background: #0B0E1A; border: 1px solid #00D4FF; border-radius: 16px; padding: 12px; margin-bottom: 20px; color: #fff;">
+    <button onclick="adminLogin()" style="width: 100%; background: #00D4FF; border: none; padding: 12px; border-radius: 40px; font-weight: bold;">Войти</button>
+    <div id="loginError" style="color: #DC2626; text-align: center; margin-top: 12px;"></div>
+  </div>
+</div>
+
+<div id="adminPanel" style="display: none;">
+  <div class="header">
+    <h1><i class="fa-solid fa-shield"></i> CryptoGPU Admin</h1>
+    <button class="logout-btn" onclick="adminLogout()">Выйти</button>
+  </div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card"><div class="stat-value" id="totalUsers">0</div><div class="stat-label">Пользователей</div></div>
+    <div class="stat-card"><div class="stat-value" id="totalTon">0</div><div class="stat-label">Всего TON</div></div>
+    <div class="stat-card"><div class="stat-value" id="totalGpuLocked">0</div><div class="stat-label">GPU в стейкинге</div></div>
+    <div class="stat-card"><div class="stat-value" id="activeStakes">0</div><div class="stat-label">Активных стейков</div></div>
+    <div class="stat-card"><div class="stat-value" id="pendingDeposits">0</div><div class="stat-label">⬇️ Пополнений</div></div>
+    <div class="stat-card"><div class="stat-value" id="pendingWithdraws">0</div><div class="stat-label">⬆️ Выводов</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('users')">👥 Пользователи</button>
+    <button class="tab-btn" onclick="showTab('staking')">🔒 Стейкинг</button>
+    <button class="tab-btn" onclick="showTab('deposits')">💎 Пополнения</button>
+    <button class="tab-btn" onclick="showTab('withdraws')">📤 Выводы</button>
+    <button class="tab-btn" onclick="showTab('tasks')">📋 Задания</button>
+    <button class="tab-btn" onclick="showTab('pendingTasks')">⏳ Ждут проверки</button>
+    <button class="tab-btn" onclick="showTab('broadcast')">📢 Рассылка</button>
+    <button class="tab-btn" onclick="showTab('referralTop')">🏆 ТОП рефералов</button>
+  </div>
+
+  <div id="tab-users" class="tab-content active">
+    <input type="text" class="search-box" id="searchUsers" placeholder="🔍 Поиск по ID или имени..." onkeyup="searchUsers()">
+    <div id="usersList"></div>
+  </div>
+
+  <!-- Новая вкладка стейкинга -->
+  <div id="tab-staking" class="tab-content">
+    <div style="background: #1A1F35; border-radius: 20px; padding: 20px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <h3>🔒 Управление стейкингом</h3>
+        <button class="btn btn-info" onclick="loadAllStakes()">🔄 Обновить</button>
+      </div>
+      
+      <div class="filter-group">
+        <button class="filter-btn active" onclick="filterStakes('all')">📊 Все стейки</button>
+        <button class="filter-btn" onclick="filterStakes('active')">🟢 Активные</button>
+        <button class="filter-btn" onclick="filterStakes('completed')">✅ Завершённые</button>
+        <button class="filter-btn" onclick="filterStakes('claimed')">🏆 Получены</button>
+      </div>
+      
+      <input type="text" class="search-box" id="searchStakes" placeholder="🔍 Поиск по ID пользователя..." onkeyup="searchStakes()">
+      
+      <div id="stakesList"></div>
+    </div>
+  </div>
+
+  <div id="tab-deposits" class="tab-content"><div id="depositsList"></div></div>
+  <div id="tab-withdraws" class="tab-content"><div id="withdrawsList"></div></div>
+  <div id="tab-tasks" class="tab-content">
+    <button class="btn btn-success" onclick="openTaskModal()" style="margin-bottom: 12px;">➕ Добавить задание</button>
+    <div id="tasksList"></div>
+  </div>
+  <div id="tab-pendingTasks" class="tab-content"><div id="pendingTasksList"></div></div>
+
+  <!-- Вкладка рассылки -->
+  <div id="tab-broadcast" class="tab-content">
+    <div style="background: #1A1F35; border-radius: 20px; padding: 20px; margin-bottom: 16px;">
+      <h3 style="margin-bottom: 16px;">📢 Массовая рассылка</h3>
+      
+      <div class="broadcast-stats" id="broadcastStats">
+        <div><span>👥 Всего пользователей:</span><span id="broadcastTotalUsers" style="color: #00D4FF;">0</span></div>
+        <div><span>✅ Активные (не забанены):</span><span id="broadcastActiveUsers" style="color: #00FFAA;">0</span></div>
+        <div><span>🚫 Забанены:</span><span id="broadcastBannedUsers" style="color: #FF8C00;">0</span></div>
+      </div>
+      
+      <div class="format-buttons">
+        <button class="format-btn" onclick="insertTag('b')"><b>Bold</b></button>
+        <button class="format-btn" onclick="insertTag('i')"><i>Italic</i></button>
+        <button class="format-btn" onclick="insertTag('code')">Code</button>
+        <button class="format-btn" onclick="insertTag('pre')">Pre</button>
+        <button class="format-btn" onclick="insertLink()">🔗 Ссылка</button>
+        <button class="format-btn" onclick="clearMessage()">🗑️ Очистить</button>
+      </div>
+      
+      <textarea id="broadcastMessage" rows="6" placeholder="Введите текст рассылки...&#10;&#10;Поддерживается HTML:&#10;&lt;b&gt;Жирный&lt;/b&gt;, &lt;i&gt;Курсив&lt;/i&gt;, &lt;a href=&quot;https://...&quot;&gt;Ссылка&lt;/a&gt;"></textarea>
+      
+      <div class="preview-box" id="previewBox" style="display: none;">
+        <h4>👁️ Предпросмотр</h4>
+        <div class="preview-content" id="previewContent"></div>
+      </div>
+      
+      <div class="button-group" style="margin-top: 16px;">
+        <button class="btn btn-info" onclick="previewMessage()">👁️ Предпросмотр</button>
+        <button class="btn btn-success" onclick="startBroadcast()">🚀 Начать рассылку</button>
+      </div>
+      
+      <div class="broadcast-progress" id="broadcastProgress">
+        <div id="progressStatus">⏳ Отправка...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div id="progressStats" style="font-size: 12px; margin-top: 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Новая вкладка ТОП рефералов за 24 часа -->
+  <div id="tab-referralTop" class="tab-content">
+    <div style="background: #1A1F35; border-radius: 20px; padding: 20px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <h3>🏆 ТОП приглашений за 24 часа</h3>
+        <button class="btn btn-info" onclick="loadReferralTop()">🔄 Обновить</button>
+      </div>
+      <div id="referralTopList"></div>
+    </div>
+  </div>
+
+  <div class="footer">CryptoGPU Admin Panel v3.0</div>
+</div>
+
+<!-- Модальное окно для просмотра рефералов пользователя -->
+<div id="referralModal" class="modal">
+  <div class="modal-content">
+    <h3>👥 Рефералы пользователя</h3>
+    <div id="referralModalInfo" style="margin: 10px 0; padding: 10px; background: #0B0E1A; border-radius: 16px;"></div>
+    <div id="referralModalList" style="max-height: 300px; overflow-y: auto;"></div>
+    <button class="btn btn-danger" onclick="closeReferralModal()">Закрыть</button>
+  </div>
+</div>
+
+<!-- Модальное окно для заданий -->
+<div id="taskModal" class="modal">
+  <div class="modal-content">
+    <h3 id="taskModalTitle">Добавить задание</h3>
+    <input type="hidden" id="taskId">
+    <input type="text" id="taskTitle" placeholder="Название">
+    <textarea id="taskDescription" placeholder="Описание" rows="2"></textarea>
+    <input type="number" id="taskRewardTon" placeholder="Награда TON" step="0.1">
+    <input type="number" id="taskRewardGpu" placeholder="Награда GPU">
+    <input type="text" id="taskTaskUrl" placeholder="Ссылка (если есть)">
+    <select id="taskIsDaily">
+      <option value="true">Ежедневное</option>
+      <option value="false">Одноразовое</option>
+    </select>
+    <input type="number" id="taskOrder" placeholder="Порядок">
+    <button class="btn btn-success" onclick="saveTask()">💾 Сохранить</button>
+    <button class="btn btn-danger" onclick="closeTaskModal()">Отмена</button>
+  </div>
+</div>
+
+<!-- Модальное окно для редактирования пользователя -->
+<div id="userModal" class="modal">
+  <div class="modal-content">
+    <h3>✏️ Редактирование</h3>
+    <input type="hidden" id="editUserId">
+    <input type="text" id="editUserIdShow" readonly style="background:#2A2F4A;">
+    <input type="number" id="editTon" placeholder="TON баланс" step="0.01">
+    <input type="number" id="editGpu" placeholder="GPU баланс">
+    <button class="btn btn-success" onclick="saveUserEdit()">💾 Сохранить</button>
+    <button class="btn btn-danger" onclick="closeUserModal()">Отмена</button>
+  </div>
+</div>
+
+<!-- Модальное окно для просмотра стейков пользователя -->
+<div id="userStakesModal" class="modal">
+  <div class="modal-content">
+    <h3>🔒 Стейки пользователя</h3>
+    <div id="userStakesModalInfo" style="margin: 10px 0; padding: 10px; background: #0B0E1A; border-radius: 16px;"></div>
+    <div id="userStakesModalList" style="max-height: 400px; overflow-y: auto;"></div>
+    <button class="btn btn-danger" onclick="closeUserStakesModal()">Закрыть</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js"></script>
+<script>
+const API_URL = window.location.origin;
+let allUsers = [];
+let currentUserPage = 1;
+let usersPerPage = 20;
+let currentUserSearchQuery = '';
+
+// ========== ПЕРЕМЕННЫЕ ДЛЯ СТЕЙКИНГА ==========
+let allStakes = [];
+let currentStakeFilter = 'all';
+let currentStakeSearchQuery = '';
+
+// ========== ФУНКЦИИ ДЛЯ СТЕЙКИНГА ==========
+async function loadAllStakes() {
+  const container = document.getElementById('stakesList');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="text-align:center; padding:20px; color:#8EA3D4;">⏳ Загрузка стейков...</div>';
+  
+  try {
+    // 1. Загружаем ВСЕ стейки одним запросом (быстро!)
+    const stakesRes = await fetch(`${API_URL}/admin/api/all-stakes`);
+    const stakesData = await stakesRes.json();
+    
+    if (!stakesData.success || !stakesData.stakes) {
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:#6B7CA8;">🔒 Нет стейков</div>';
+      return;
+    }
+    
+    // 2. Загружаем пользователей для получения имён
+    const usersRes = await fetch(`${API_URL}/admin/api/users`);
+    const users = await usersRes.json();
+    
+    // 3. Создаём карту пользователей для быстрого доступа
+    const usersMap = {};
+    users.forEach(user => {
+      usersMap[user.userId] = user;
+    });
+    
+    // 4. Обогащаем стейки данными пользователей
+    const allStakesData = stakesData.stakes.map(stake => {
+      const user = usersMap[stake.userId];
+      return {
+        ...stake,
+        userName: user?.name || 'Unknown',
+        userId: stake.userId,
+        userTon: user?.ton || 0,
+        userGpu: user?.gpu || 0
+      };
+    });
+    
+    allStakes = allStakesData.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+    
+    // 5. Обновляем статистику
+    const totalGpuLocked = allStakes.reduce((sum, s) => sum + (s.claimed ? 0 : s.amount), 0);
+    const activeStakesCount = allStakes.filter(s => !s.claimed && new Date(s.endDate) > new Date()).length;
+    
+    const totalGpuLockedEl = document.getElementById('totalGpuLocked');
+    const activeStakesEl = document.getElementById('activeStakes');
+    if (totalGpuLockedEl) totalGpuLockedEl.innerText = totalGpuLocked.toFixed(0);
+    if (activeStakesEl) activeStakesEl.innerText = activeStakesCount;
+    
+    renderStakesList();
+    
+    if (allStakes.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:#6B7CA8;">🔒 Нет стейков</div>';
+    }
+    
+  } catch (error) {
+    console.error('Ошибка загрузки стейков:', error);
+    container.innerHTML = `<div style="text-align:center; padding:20px; color:#DC2626;">❌ Ошибка: ${error.message}</div>`;
+  }
+}
+
+function filterStakes(filter) {
+  currentStakeFilter = filter;
+  document.querySelectorAll('#tab-staking .filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent.includes(filter === 'all' ? 'Все' : filter === 'active' ? 'Активные' : filter === 'completed' ? 'Завершённые' : 'Получены')) {
+      btn.classList.add('active');
+    }
+  });
+  renderStakesList();
+}
+
+function searchStakes() {
+  currentStakeSearchQuery = document.getElementById('searchStakes')?.value.toLowerCase() || '';
+  renderStakesList();
+}
+
+function renderStakesList() {
+  const container = document.getElementById('stakesList');
+  if (!container) return;
+  
+  let filteredStakes = [...allStakes];
+  
+  // Фильтр по статусу
+  if (currentStakeFilter === 'active') {
+    filteredStakes = filteredStakes.filter(s => !s.claimed && new Date(s.endDate) > new Date());
+  } else if (currentStakeFilter === 'completed') {
+    filteredStakes = filteredStakes.filter(s => !s.claimed && new Date(s.endDate) <= new Date());
+  } else if (currentStakeFilter === 'claimed') {
+    filteredStakes = filteredStakes.filter(s => s.claimed === true);
+  }
+  
+  // Поиск по пользователю
+  if (currentStakeSearchQuery) {
+    filteredStakes = filteredStakes.filter(s => 
+      s.userId?.toLowerCase().includes(currentStakeSearchQuery) || 
+      s.userName?.toLowerCase().includes(currentStakeSearchQuery)
+    );
+  }
+  
+  if (filteredStakes.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:#6B7CA8;">🔒 Нет стейков по указанным критериям</div>';
+    return;
+  }
+  
+  container.innerHTML = filteredStakes.map(stake => {
+    const now = new Date();
+    const endDate = new Date(stake.endDate);
+    const startDate = new Date(stake.startDate);
+    const totalDuration = stake.days * 24 * 60 * 60 * 1000;
+    const elapsed = Math.max(0, Math.min(totalDuration, now - startDate));
+    const progressPercent = (elapsed / totalDuration) * 100;
+    const isExpired = now >= endDate;
+    const isClaimed = stake.claimed === true;
+    const rewardAmount = stake.amount * (stake.rewardPercent / 100);
+    
+    let statusBadge = '';
+    let statusText = '';
+    if (isClaimed) {
+      statusBadge = '<span class="badge-claimed" style="padding: 2px 8px; border-radius: 20px; font-size: 10px;">🏆 Награда получена</span>';
+      statusText = 'Завершён (награда выдана)';
+    } else if (isExpired) {
+      statusBadge = '<span class="badge-completed" style="padding: 2px 8px; border-radius: 20px; font-size: 10px;">✅ Готов к выдаче</span>';
+      statusText = 'Ожидает выдачи награды';
+    } else {
+      statusBadge = '<span class="badge-active" style="padding: 2px 8px; border-radius: 20px; font-size: 10px;">🟢 Активен</span>';
+      const daysRemaining = Math.ceil((endDate - now) / (24 * 60 * 60 * 1000));
+      statusText = `Осталось ${daysRemaining} дн.`;
+    }
+    
+    return `
+      <div class="stake-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+          <div>
+            <div><strong>${escapeHtml(stake.userName)}</strong> <span class="user-id">${stake.userId}</span></div>
+            <div style="font-size: 11px; color: #8EA3D4;">Баланс: ${(stake.userTon || 0).toFixed(2)} TON | ${(stake.userGpu || 0).toFixed(2)} GPU</div>
+          </div>
+          ${statusBadge}
+        </div>
+        
+        <div class="stake-info">
+          <div class="stake-amount">📦 ${stake.amount.toFixed(2)} GPU</div>
+          <div class="stake-reward">🏆 +${rewardAmount.toFixed(2)} GPU (${stake.rewardPercent}%)</div>
+        </div>
+        
+        <div class="stake-info">
+          <span>📅 ${stake.days} дней</span>
+          <span>📆 ${endDate.toLocaleDateString()}</span>
+          <span>💰 Награда: ${rewardAmount.toFixed(2)} GPU</span>
+        </div>
+        
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" style="width: ${progressPercent}%"></div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px;">
+          <span>Начало: ${startDate.toLocaleDateString()}</span>
+          <span>${statusText}</span>
+        </div>
+        
+        <div class="button-group" style="margin-top: 12px;">
+          <button class="btn btn-info" onclick="viewUserStakes('${stake.userId}', '${escapeHtml(stake.userName)}')">👁️ Все стейки пользователя</button>
+          ${isExpired && !isClaimed ? `<button class="btn btn-success" onclick="forceClaimStake('${stake._id}', '${stake.userId}')">🎁 Принудительно выдать награду</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function viewUserStakes(userId, userName) {
+  const modal = document.getElementById('userStakesModal');
+  const infoDiv = document.getElementById('userStakesModalInfo');
+  const listDiv = document.getElementById('userStakesModalList');
+  
+  modal.style.display = 'flex';
+  infoDiv.innerHTML = `<strong>${userName}</strong> (${userId})<br>⏳ Загрузка стейков...`;
+  listDiv.innerHTML = '';
+  
+  try {
+    const res = await fetch(`${API_URL}/admin/api/user/${userId}/stakes`);
+    const data = await res.json();
+    
+    if (data.success && data.stakes) {
+      const activeStakes = data.stakes.filter(s => !s.claimed && new Date(s.endDate) > new Date());
+      const completedStakes = data.stakes.filter(s => !s.claimed && new Date(s.endDate) <= new Date());
+      const claimedStakes = data.stakes.filter(s => s.claimed);
+      
+      infoDiv.innerHTML = `
+        <strong>${userName}</strong> (${userId})<br>
+        🔒 Активных стейков: ${activeStakes.length}<br>
+        ✅ Завершённых (ждут выдачи): ${completedStakes.length}<br>
+        🏆 Полученных наград: ${claimedStakes.length}
+      `;
+      
+      if (data.stakes.length === 0) {
+        listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#6B7CA8;">Нет стейков у этого пользователя</div>';
+      } else {
+        listDiv.innerHTML = data.stakes.map(stake => {
+          const endDate = new Date(stake.endDate);
+          const isExpired = new Date() >= endDate;
+          const rewardAmount = stake.amount * (stake.rewardPercent / 100);
+          
+          return `
+            <div class="stake-card" style="margin-bottom: 10px;">
+              <div class="stake-info">
+                <span class="stake-amount">📦 ${stake.amount.toFixed(2)} GPU</span>
+                <span>📅 ${stake.days} дн.</span>
+                <span>🏆 +${stake.rewardPercent}%</span>
+              </div>
+              <div class="stake-info">
+                <span>📆 До ${endDate.toLocaleDateString()}</span>
+                <span>💰 +${rewardAmount.toFixed(2)} GPU</span>
+              </div>
+              <div style="font-size: 11px; margin-top: 6px;">
+                ${stake.claimed ? '✅ Награда получена' : (isExpired ? '🟢 Готово к выдаче' : '⏳ Активен')}
+              </div>
+              ${isExpired && !stake.claimed ? `<button class="btn btn-success btn-sm" style="margin-top: 8px; padding: 4px 12px;" onclick="forceClaimStake('${stake._id}', '${userId}')">🎁 Выдать награду</button>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    } else {
+      infoDiv.innerHTML = `<strong>${userName}</strong> (${userId})<br><span style="color: #DC2626;">❌ Ошибка загрузки стейков</span>`;
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки стейков пользователя:', error);
+    infoDiv.innerHTML = `<strong>${userName}</strong> (${userId})<br><span style="color: #DC2626;">❌ Ошибка загрузки</span>`;
+  }
+}
+
+async function forceClaimStake(stakeId, userId) {
+  if (!confirm(`Вы уверены, что хотите принудительно выдать награду по этому стейку?\n\nПользователь получит награду на баланс.`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_URL}/admin/api/stake/force-claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stakeId, userId })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(`✅ Награда успешно выдана!\n${result.message || ''}`);
+      loadAllStakes();
+    } else {
+      alert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
+    }
+  } catch (error) {
+    console.error('Ошибка принудительной выдачи:', error);
+    alert('❌ Ошибка соединения с сервером');
+  }
+}
+
+function closeUserStakesModal() {
+  document.getElementById('userStakesModal').style.display = 'none';
+}
+
+// ========== ФУНКЦИИ ДЛЯ РЕФЕРАЛОВ ==========
+async function loadReferralTop() {
+  const container = document.getElementById('referralTopList');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="text-align:center; padding:20px; color:#8EA3D4;">⏳ Загрузка данных...</div>';
+  
+  try {
+    const users = await fetch(`${API_URL}/admin/api/users`).then(r => r.json());
+    const referralsLast24h = await fetch(`${API_URL}/admin/api/referrals/last24h`).then(r => r.json());
+    
+    const referralCounts = {};
+    referralsLast24h.forEach(ref => {
+      const referrerId = ref.referredBy;
+      if (referrerId) {
+        referralCounts[referrerId] = (referralCounts[referrerId] || 0) + 1;
+      }
+    });
+    
+    const topUsers = users.map(user => ({
+      ...user,
+      referralsLast24h: referralCounts[user.userId] || 0
+    })).sort((a, b) => b.referralsLast24h - a.referralsLast24h).slice(0, 50);
+    
+    if (topUsers.length === 0 || topUsers.every(u => u.referralsLast24h === 0)) {
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:#6B7CA8;">📊 За последние 24 часа нет новых приглашений</div>';
+      return;
+    }
+    
+    container.innerHTML = topUsers.map((user, index) => {
+      let medalClass = '';
+      let medalIcon = '';
+      if (index === 0) { medalClass = 'top-1'; medalIcon = '🥇 '; }
+      else if (index === 1) { medalClass = 'top-2'; medalIcon = '🥈 '; }
+      else if (index === 2) { medalClass = 'top-3'; medalIcon = '🥉 '; }
+      
+      return `
+        <div class="top-card ${medalClass}" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 24px; font-weight: bold; width: 40px; color: ${index < 3 ? '#FFD700' : '#8EA3D4'}">${index + 1}</span>
+            <div>
+              <div><strong>${medalIcon}${escapeHtml(user.name)}</strong> <span class="user-id">${user.userId}</span></div>
+              <div class="referral-stats">👥 Всего рефералов: ${user.friends || 0}</div>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 24px; font-weight: bold; color: #00FFAA;">+${user.referralsLast24h}</div>
+            <div style="font-size: 11px; color: #8EA3D4;">за 24 часа</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+  } catch (error) {
+    console.error('Ошибка загрузки ТОПа рефералов:', error);
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:#DC2626;">❌ Ошибка загрузки данных</div>';
+  }
+}
+
+async function showUserReferrals(userId, userName) {
+  const modal = document.getElementById('referralModal');
+  const infoDiv = document.getElementById('referralModalInfo');
+  const listDiv = document.getElementById('referralModalList');
+  
+  modal.style.display = 'flex';
+  infoDiv.innerHTML = `<strong>${escapeHtml(userName)}</strong> (${userId})<br>⏳ Загрузка списка рефералов...`;
+  listDiv.innerHTML = '';
+  
+  try {
+    const referrals = await fetch(`${API_URL}/admin/api/user/${userId}/referrals`).then(r => r.json());
+    
+    const totalReferrals = referrals.length;
+    const last24hReferrals = referrals.filter(ref => {
+      const refDate = new Date(ref.joinedAt || ref.createdAt);
+      const now = new Date();
+      const diffHours = (now - refDate) / (1000 * 60 * 60);
+      return diffHours <= 24;
+    });
+    
+    infoDiv.innerHTML = `
+      <strong>${escapeHtml(userName)}</strong> (${userId})<br>
+      📊 Всего рефералов: ${totalReferrals}<br>
+      📈 За 24 часа: ${last24hReferrals.length}
+    `;
+    
+    if (referrals.length === 0) {
+      listDiv.innerHTML = '<div style="text-align:center; padding:20px; color:#6B7CA8;">Нет приглашенных пользователей</div>';
+    } else {
+      listDiv.innerHTML = `
+        <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+          <thead>
+            <tr><th style="text-align: left; padding: 8px; border-bottom: 1px solid #00D4FF;">Имя</th>
+              <th style="text-align: left; padding: 8px; border-bottom: 1px solid #00D4FF;">ID</th>
+              <th style="text-align: left; padding: 8px; border-bottom: 1px solid #00D4FF;">Дата</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${referrals.map(ref => {
+              const date = new Date(ref.joinedAt || ref.createdAt);
+              const isLast24h = (new Date() - date) <= 24 * 60 * 60 * 1000;
+              return `
+                <tr style="${isLast24h ? 'background: #00FFAA10;' : ''}">
+                  <td style="padding: 8px;">${escapeHtml(ref.name || 'Unknown')}</td>
+                  <td style="padding: 8px; font-family: monospace;">${ref.userId || ref.id}</td>
+                  <td style="padding: 8px; font-size: 10px;">${formatDate(date)} ${isLast24h ? '<span style="color: #00FFAA;">🆕</span>' : ''}</td>
+                </table>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки рефералов:', error);
+    infoDiv.innerHTML = `<strong>${escapeHtml(userName)}</strong> (${userId})<br><span style="color: #DC2626;">❌ Ошибка загрузки</span>`;
+    listDiv.innerHTML = '';
+  }
+}
+
+function closeReferralModal() {
+  document.getElementById('referralModal').style.display = 'none';
+}
+
+async function adminLogin() {
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  const res = await fetch(`${API_URL}/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  const data = await res.json();
+  if (data.success) {
+    document.getElementById('loginPanel').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('loginError').innerText = 'Неверный логин или пароль';
+  }
+}
+
+async function adminLogout() {
+  await fetch(`${API_URL}/admin/logout`, { method: 'POST' });
+  location.reload();
+}
+
+function showTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tabName}`).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (tabName === 'users') loadUsers();
+  if (tabName === 'staking') loadAllStakes();
+  if (tabName === 'deposits') loadDeposits();
+  if (tabName === 'withdraws') loadWithdraws();
+  if (tabName === 'tasks') loadTasks();
+  if (tabName === 'pendingTasks') loadPendingTasks();
+  if (tabName === 'broadcast') loadBroadcastStats();
+  if (tabName === 'referralTop') loadReferralTop();
+}
+
+async function loadAll() {
+  loadUsers();
+  loadAllStakes();
+  loadDeposits();
+  loadWithdraws();
+  loadTasks();
+  loadPendingTasks();
+  loadStats();
+  loadReferralTop();
+}
+
+async function loadStats() {
+  const users = await fetch(`${API_URL}/admin/api/users`).then(r => r.json());
+  document.getElementById('totalUsers').innerText = users.length;
+  const totalTon = users.reduce((s, u) => s + (u.ton || 0), 0).toFixed(2);
+  document.getElementById('totalTon').innerText = totalTon;
+  const deposits = await fetch(`${API_URL}/admin/api/deposits/pending`).then(r => r.json());
+  const withdraws = await fetch(`${API_URL}/admin/api/withdraws/pending`).then(r => r.json());
+  document.getElementById('pendingDeposits').innerText = deposits.length;
+  document.getElementById('pendingWithdraws').innerText = withdraws.length;
+}
+
+async function loadBroadcastStats() {
+  const users = await fetch(`${API_URL}/admin/api/users`).then(r => r.json());
+  const total = users.length;
+  const active = users.filter(u => !u.isBanned).length;
+  const banned = users.filter(u => u.isBanned).length;
+  document.getElementById('broadcastTotalUsers').innerText = total;
+  document.getElementById('broadcastActiveUsers').innerText = active;
+  document.getElementById('broadcastBannedUsers').innerText = banned;
+}
+
+function filterUsersByQuery(users, query) {
+  if (!query) return users;
+  const lowerQuery = query.toLowerCase();
+  return users.filter(u => 
+    u.userId?.toLowerCase().includes(lowerQuery) || 
+    u.name?.toLowerCase().includes(lowerQuery)
+  );
+}
+
+function renderUserPage(filteredUsers) {
+  const container = document.getElementById('usersList');
+  if (!container) return;
+
+  const startIndex = (currentUserPage - 1) * usersPerPage;
+  const endIndex = startIndex + usersPerPage;
+  const usersToShow = filteredUsers.slice(startIndex, endIndex);
+
+  if (usersToShow.length === 0 && filteredUsers.length > 0) {
+    currentUserPage = 1;
+    renderUserPage(filteredUsers);
+    return;
+  }
+
+  container.innerHTML = usersToShow.map(u => `
+    <div class="user-card" data-id="${u.userId}" data-name="${u.name.toLowerCase()}">
+      <div class="user-header">
+        <span class="user-name">${escapeHtml(u.name)} ${u.isBanned ? '<span class="badge badge-banned">🚫 Забанен</span>' : ''}</span>
+        <span class="user-id">${u.userId}</span>
+      </div>
+      <div class="user-stats">
+        <span>💰 ${(u.ton || 0).toFixed(4)} TON</span>
+        <span>⚡ ${(u.gpu || 0).toFixed(2)} GPU</span>
+        <span>👥 ${u.friends || 0} рефералов</span>
+        <span>📅 ${formatDate(u.lastSeen || u.createdAt)}</span>
+      </div>
+      <div class="referral-stats" id="ref24h-${u.userId}">⏳ Загрузка рефералов за 24ч...</div>
+      <div class="miners-list">
+        ${Object.entries(u.minerQuantities || {}).filter(([_,q]) => q > 0).map(([id,q]) => `<span class="miner-tag">${id} ×${q}</span>`).join('') || '<span class="miner-tag">нет майнеров</span>'}
+      </div>
+      <div class="button-group">
+        <button class="btn btn-info" onclick="editUser('${u.userId}', ${u.ton || 0}, ${u.gpu || 0})">✏️ Редактировать</button>
+        <button class="btn btn-purple" onclick="showUserReferrals('${u.userId}', '${escapeHtml(u.name)}')">👥 Рефералы</button>
+        <button class="btn btn-info" onclick="viewUserStakes('${u.userId}', '${escapeHtml(u.name)}')">🔒 Стейки</button>
+        <button class="btn btn-success" onclick="giveGpu('${u.userId}')">⚡ +GPU</button>
+        <button class="btn btn-success" onclick="giveTon('${u.userId}')">💰 +TON</button>
+        <button class="btn btn-warning" onclick="giveMiner('${u.userId}')">⛏️ +Майнер</button>
+        ${u.isBanned ? `<button class="btn btn-success" onclick="unbanUser('${u.userId}')">🔓 Разбанить</button>` : `<button class="btn btn-danger" onclick="banUser('${u.userId}')">🔒 Забанить</button>`}
+      </div>
+    </div>
+  `).join('');
+  
+  loadReferralsForUsers(usersToShow);
+}
+
+async function loadReferralsForUsers(users) {
+  try {
+    const referralsLast24h = await fetch(`${API_URL}/admin/api/referrals/last24h`).then(r => r.json());
+    
+    const referralCounts = {};
+    referralsLast24h.forEach(ref => {
+      const referrerId = ref.referredBy;
+      if (referrerId) {
+        referralCounts[referrerId] = (referralCounts[referrerId] || 0) + 1;
+      }
+    });
+    
+    users.forEach(user => {
+      const count = referralCounts[user.userId] || 0;
+      const elem = document.getElementById(`ref24h-${user.userId}`);
+      if (elem) {
+        elem.innerHTML = `📈 За 24 часа: +${count} рефералов`;
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки рефералов за 24 часа:', error);
+  }
+}
+
+function updateUserPaginationControls(totalFilteredUsers) {
+  const totalPages = Math.ceil(totalFilteredUsers / usersPerPage);
+  
+  let paginationContainer = document.getElementById('userPagination');
+  const parentContainer = document.getElementById('usersList')?.parentNode;
+  
+  if (!parentContainer) return;
+  
+  if (paginationContainer) {
+    paginationContainer.remove();
+  }
+  
+  if (totalPages <= 1) return;
+  
+  paginationContainer = document.createElement('div');
+  paginationContainer.id = 'userPagination';
+  paginationContainer.style.cssText = 'display: flex; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap;';
+  
+  const prevBtn = document.createElement('button');
+  prevBtn.innerText = '◀ Назад';
+  prevBtn.className = 'btn';
+  prevBtn.disabled = currentUserPage === 1;
+  prevBtn.onclick = () => {
+    if (currentUserPage > 1) {
+      currentUserPage--;
+      const filtered = filterUsersByQuery(allUsers, currentUserSearchQuery);
+      renderUserPage(filtered);
+      updateUserPaginationControls(filtered.length);
+      document.getElementById('usersList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+  paginationContainer.appendChild(prevBtn);
+  
+  const maxButtons = 5;
+  let startPage = Math.max(1, currentUserPage - Math.floor(maxButtons / 2));
+  let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+  if (endPage - startPage + 1 < maxButtons) {
+    startPage = Math.max(1, endPage - maxButtons + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    const pageBtn = document.createElement('button');
+    pageBtn.innerText = i;
+    pageBtn.className = 'btn';
+    if (i === currentUserPage) {
+      pageBtn.style.background = '#00D4FF';
+      pageBtn.style.color = '#0B0E1A';
+      pageBtn.style.fontWeight = 'bold';
+    }
+    pageBtn.onclick = (function(page) { 
+      return function() { 
+        currentUserPage = page; 
+        const filtered = filterUsersByQuery(allUsers, currentUserSearchQuery);
+        renderUserPage(filtered);
+        updateUserPaginationControls(filtered.length);
+        document.getElementById('usersList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+    })(i);
+    paginationContainer.appendChild(pageBtn);
+  }
+  
+  const nextBtn = document.createElement('button');
+  nextBtn.innerText = 'Вперед ▶';
+  nextBtn.className = 'btn';
+  nextBtn.disabled = currentUserPage === totalPages;
+  nextBtn.onclick = () => {
+    if (currentUserPage < totalPages) {
+      currentUserPage++;
+      const filtered = filterUsersByQuery(allUsers, currentUserSearchQuery);
+      renderUserPage(filtered);
+      updateUserPaginationControls(filtered.length);
+      document.getElementById('usersList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+  paginationContainer.appendChild(nextBtn);
+  
+  const infoSpan = document.createElement('div');
+  infoSpan.style.cssText = 'width: 100%; text-align: center; margin-top: 8px; font-size: 12px; color: #8EA3D4;';
+  infoSpan.innerText = `Показано ${((currentUserPage-1)*usersPerPage + 1)}-${Math.min(currentUserPage*usersPerPage, totalFilteredUsers)} из ${totalFilteredUsers} пользователей`;
+  paginationContainer.appendChild(infoSpan);
+  
+  parentContainer.appendChild(paginationContainer);
+}
+
+async function loadUsers() {
+  const container = document.getElementById('usersList');
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align:center; padding:20px; color:#8EA3D4;">⏳ Загрузка пользователей...</div>';
+
+  try {
+    const res = await fetch(`${API_URL}/admin/api/users`);
+    const users = await res.json();
+    allUsers = users;
+    
+    const filteredUsers = filterUsersByQuery(allUsers, currentUserSearchQuery);
+    renderUserPage(filteredUsers);
+    updateUserPaginationControls(filteredUsers.length);
+    
+  } catch (error) {
+    console.error('Ошибка загрузки пользователей:', error);
+    container.innerHTML = '<div style="text-align:center; padding:20px; color:#DC2626;">❌ Ошибка загрузки пользователей</div>';
+  }
+}
+
+function searchUsers() {
+  const query = document.getElementById('searchUsers').value.toLowerCase();
+  currentUserSearchQuery = query;
+  currentUserPage = 1;
+  
+  const filtered = filterUsersByQuery(allUsers, currentUserSearchQuery);
+  renderUserPage(filtered);
+  updateUserPaginationControls(filtered.length);
+}
+
+function formatDate(d) { return new Date(d).toLocaleString(); }
+function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m) { return m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'; }); }
+
+function editUser(userId, ton, gpu) {
+  document.getElementById('editUserId').value = userId;
+  document.getElementById('editUserIdShow').value = userId;
+  document.getElementById('editTon').value = ton;
+  document.getElementById('editGpu').value = gpu;
+  document.getElementById('userModal').style.display = 'flex';
+}
+function closeUserModal() { document.getElementById('userModal').style.display = 'none'; }
+async function saveUserEdit() {
+  const userId = document.getElementById('editUserId').value;
+  const ton = parseFloat(document.getElementById('editTon').value) || 0;
+  const gpu = parseFloat(document.getElementById('editGpu').value) || 0;
+  await fetch(`${API_URL}/admin/api/user/setBalance`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, ton, gpu }) });
+  closeUserModal();
+  loadUsers();
+}
+
+async function giveGpu(userId) {
+  const amount = prompt('Количество GPU для выдачи:');
+  if (!amount) return;
+  await fetch(`${API_URL}/admin/api/user/giveGpu`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, amount: parseFloat(amount) }) });
+  loadUsers();
+}
+async function giveTon(userId) {
+  const amount = prompt('Количество TON для выдачи:');
+  if (!amount) return;
+  await fetch(`${API_URL}/admin/api/user/giveTon`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, amount: parseFloat(amount) }) });
+  loadUsers();
+}
+async function giveMiner(userId) {
+  const minerId = prompt('ID майнера (basic, normal, pro, ultra, legendary, minex, friend, bro, nexus):');
+  if (!minerId) return;
+  const quantity = parseInt(prompt('Количество:')) || 1;
+  
+  const response = await fetch(`${API_URL}/admin/api/user/giveMiner`, { 
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/json' }, 
+    body: JSON.stringify({ userId, minerId, quantity }) 
+  });
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    alert(`✅ ${result.message || 'Майнер выдан!'}`);
+    loadUsers();
+  } else {
+    alert(`❌ Ошибка: ${result.error || 'Неизвестная ошибка'}`);
+  }
+}
+async function banUser(userId) {
+  const reason = prompt('Причина бана:');
+  await fetch(`${API_URL}/admin/api/user/ban`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, reason }) });
+  loadUsers();
+}
+async function unbanUser(userId) {
+  await fetch(`${API_URL}/admin/api/user/unban`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) });
+  loadUsers();
+}
+
+async function loadDeposits() {
+  const deposits = await fetch(`${API_URL}/admin/api/deposits/pending`).then(r => r.json());
+  document.getElementById('depositsList').innerHTML = deposits.map(d => `
+    <div class="request-card">
+      <div><strong>${escapeHtml(d.userName)}</strong> (${d.userId})</div>
+      <div style="font-size: 20px; margin: 8px 0;">${d.amount} TON</div>
+      <div class="button-group">
+        <button class="btn btn-success" onclick="approveDeposit('${d._id}')">✅ Подтвердить</button>
+        <button class="btn btn-danger" onclick="rejectDeposit('${d._id}')">❌ Отклонить</button>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center; padding:20px; color:#6B7CA8;">Нет заявок</div>';
+}
+async function loadWithdraws() {
+  const withdraws = await fetch(`${API_URL}/admin/api/withdraws/pending`).then(r => r.json());
+  document.getElementById('withdrawsList').innerHTML = withdraws.map(w => `
+    <div class="request-card">
+      <div><strong>${escapeHtml(w.userName)}</strong> (${w.userId})</div>
+      <div style="font-size: 20px; margin: 8px 0;">${w.amount} TON</div>
+      <div style="font-size: 11px; word-break: break-all;">📤 ${w.wallet}</div>
+      <div class="button-group">
+        <button class="btn btn-success" onclick="approveWithdraw('${w._id}')">✅ Выполнен</button>
+        <button class="btn btn-danger" onclick="rejectWithdraw('${w._id}')">❌ Отклонить</button>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center; padding:20px; color:#6B7CA8;">Нет заявок</div>';
+}
+
+async function approveDeposit(id) { await fetch(`${API_URL}/admin/api/deposit/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); loadDeposits(); loadStats(); loadUsers(); }
+async function approveWithdraw(id) { await fetch(`${API_URL}/admin/api/withdraw/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); loadWithdraws(); loadStats(); }
+async function rejectWithdraw(id) { await fetch(`${API_URL}/admin/api/withdraw/reject`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); loadWithdraws(); loadStats(); }
+function rejectDeposit(id) { alert('Пополнения нельзя отклонить, только подтвердить'); }
+
+// ЗАДАНИЯ
+async function loadTasks() {
+  const tasks = await fetch(`${API_URL}/admin/api/tasks`).then(r => r.json());
+  document.getElementById('tasksList').innerHTML = tasks.map(t => `
+    <div class="task-card">
+      <div><strong>${escapeHtml(t.title)}</strong> - ${escapeHtml(t.description)}</div>
+      <div style="font-size: 12px; margin: 6px 0;">💰 +${t.rewardTon} TON | ⚡ +${t.rewardGpu} GPU | ${t.isDaily ? '📅 Ежедневное' : '🔁 Одноразовое'}</div>
+      <div class="button-group">
+        <button class="btn btn-warning" onclick="editTask('${t.id}')">✏️ Редактировать</button>
+        <button class="btn btn-danger" onclick="deleteTask('${t.id}')">🗑️ Удалить</button>
+      </div>
+    </div>
+  `).join('') || '<div style="text-align:center; padding:20px; color:#6B7CA8;">Нет заданий</div>';
+}
+async function loadPendingTasks() {
+  const pending = await fetch(`${API_URL}/admin/api/tasks/pending`).then(r => r.json());
+  document.getElementById('pendingTasksList').innerHTML = pending.map(p => `
+    <div class="request-card">
+      <div><strong>${escapeHtml(p.userName)}</strong> (${p.userId})</div>
+      <div>📋 ${escapeHtml(p.taskTitle)}</div>
+      <div style="font-size: 12px; margin: 6px 0;">💰 +${p.rewardTon} TON | ⚡ +${p.rewardGpu} GPU</div>
+      <button class="btn btn-success" onclick="approveTask('${p.id}')">✅ Подтвердить</button>
+    </div>
+  `).join('') || '<div style="text-align:center; padding:20px; color:#6B7CA8;">Нет заданий на проверку</div>';
+}
+async function approveTask(id) { await fetch(`${API_URL}/admin/api/tasks/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); loadPendingTasks(); loadStats(); }
+
+function openTaskModal() {
+  document.getElementById('taskModalTitle').innerText = 'Добавить задание';
+  document.getElementById('taskId').value = '';
+  document.getElementById('taskTitle').value = '';
+  document.getElementById('taskDescription').value = '';
+  document.getElementById('taskRewardTon').value = '';
+  document.getElementById('taskRewardGpu').value = '';
+  document.getElementById('taskTaskUrl').value = '';
+  document.getElementById('taskIsDaily').value = 'true';
+  document.getElementById('taskOrder').value = '';
+  document.getElementById('taskModal').style.display = 'flex';
+}
+function closeTaskModal() { document.getElementById('taskModal').style.display = 'none'; }
+function editTask(id) { loadTaskForEdit(id); }
+async function loadTaskForEdit(id) {
+  const tasks = await fetch(`${API_URL}/admin/api/tasks`).then(r => r.json());
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  document.getElementById('taskModalTitle').innerText = 'Редактировать задание';
+  document.getElementById('taskId').value = task.id;
+  document.getElementById('taskTitle').value = task.title;
+  document.getElementById('taskDescription').value = task.description;
+  document.getElementById('taskRewardTon').value = task.rewardTon;
+  document.getElementById('taskRewardGpu').value = task.rewardGpu;
+  document.getElementById('taskTaskUrl').value = task.taskUrl || '';
+  document.getElementById('taskIsDaily').value = task.isDaily ? 'true' : 'false';
+  document.getElementById('taskOrder').value = task.order || 0;
+  document.getElementById('taskModal').style.display = 'flex';
+}
+async function saveTask() {
+  const task = {
+    id: document.getElementById('taskId').value,
+    title: document.getElementById('taskTitle').value,
+    description: document.getElementById('taskDescription').value,
+    rewardTon: parseFloat(document.getElementById('taskRewardTon').value) || 0,
+    rewardGpu: parseInt(document.getElementById('taskRewardGpu').value) || 0,
+    taskUrl: document.getElementById('taskTaskUrl').value,
+    isDaily: document.getElementById('taskIsDaily').value === 'true',
+    order: parseInt(document.getElementById('taskOrder').value) || 0
+  };
+  await fetch(`${API_URL}/admin/api/tasks/save`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task) });
+  closeTaskModal();
+  loadTasks();
+}
+async function deleteTask(id) {
+  if (!confirm('Удалить задание?')) return;
+  await fetch(`${API_URL}/admin/api/tasks/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+  loadTasks();
+}
+
+// ========== ФУНКЦИИ РАССЫЛКИ ==========
+function insertTag(tag) {
+  const textarea = document.getElementById('broadcastMessage');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  const selectedText = text.substring(start, end) || 'текст';
+  const replacement = `<${tag}>${selectedText}</${tag}>`;
+  textarea.value = text.substring(0, start) + replacement + text.substring(end);
+  textarea.focus();
+  previewMessage();
+}
+
+function insertLink() {
+  const url = prompt('Введите URL ссылки:', 'https://');
+  if (!url) return;
+  const textarea = document.getElementById('broadcastMessage');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  const selectedText = text.substring(start, end) || 'ссылка';
+  const replacement = `<a href="${url}" target="_blank">${selectedText}</a>`;
+  textarea.value = text.substring(0, start) + replacement + text.substring(end);
+  textarea.focus();
+  previewMessage();
+}
+
+function clearMessage() {
+  if (confirm('Очистить текст сообщения?')) {
+    document.getElementById('broadcastMessage').value = '';
+    document.getElementById('previewBox').style.display = 'none';
+  }
+}
+
+function previewMessage() {
+  const message = document.getElementById('broadcastMessage').value;
+  const previewBox = document.getElementById('previewBox');
+  const previewContent = document.getElementById('previewContent');
+  
+  if (message.trim()) {
+    previewBox.style.display = 'block';
+    previewContent.innerHTML = message.replace(/\n/g, '<br>');
+  } else {
+    previewBox.style.display = 'none';
+  }
+}
+
+async function startBroadcast() {
+  const message = document.getElementById('broadcastMessage').value;
+  
+  if (!message.trim()) {
+    alert('❌ Введите текст сообщения!');
+    return;
+  }
+  
+  const activeUsers = parseInt(document.getElementById('broadcastActiveUsers').innerText);
+  if (!confirm(`⚠️ ВНИМАНИЕ!\n\nСообщение получат ${activeUsers} активных пользователей.\n\nВы уверены, что хотите отправить рассылку?`)) {
+    return;
+  }
+  
+  const progressDiv = document.getElementById('broadcastProgress');
+  const progressFill = document.getElementById('progressFill');
+  const progressStats = document.getElementById('progressStats');
+  const progressStatus = document.getElementById('progressStatus');
+  
+  progressDiv.style.display = 'block';
+  progressFill.style.width = '0%';
+  progressStats.innerText = 'Подготовка...';
+  
+  try {
+    const response = await fetch(`${API_URL}/admin/api/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        message: message, 
+        parse_mode: 'HTML',
+        confirm: true 
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      progressStatus.innerText = '✅ Рассылка запущена!';
+      progressStats.innerText = `📨 Отправлено: 0 / ${result.total}`;
+      
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress = Math.min(progress + 5, 90);
+        progressFill.style.width = `${progress}%`;
+      }, 1000);
+      
+      const checkInterval = setInterval(async () => {
+        const statusRes = await fetch(`${API_URL}/admin/api/broadcast/status`);
+        const status = await statusRes.json();
+        if (status.completed) {
+          clearInterval(interval);
+          clearInterval(checkInterval);
+          progressFill.style.width = '100%';
+          progressStatus.innerText = '✅ Рассылка завершена!';
+          progressStats.innerText = `📨 Отправлено: ${status.sent} / ${status.total} | ❌ Ошибок: ${status.failed}`;
+          setTimeout(() => {
+            progressDiv.style.display = 'none';
+          }, 3000);
+        } else if (status.sent) {
+          const percent = (status.sent / status.total) * 100;
+          progressFill.style.width = `${percent}%`;
+          progressStats.innerText = `📨 Отправлено: ${status.sent} / ${status.total} | ❌ Ошибок: ${status.failed || 0}`;
+        }
+      }, 3000);
+      
+      setTimeout(() => {
+        clearInterval(interval);
+        clearInterval(checkInterval);
+        progressFill.style.width = '100%';
+        progressStatus.innerText = '✅ Рассылка завершена!';
+        setTimeout(() => {
+          progressDiv.style.display = 'none';
+        }, 3000);
+      }, 60000);
+      
+    } else {
+      alert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+      progressDiv.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Broadcast error:', error);
+    alert('❌ Ошибка соединения с сервером');
+    progressDiv.style.display = 'none';
+  }
+}
+
+setInterval(() => { 
+  if (document.getElementById('adminPanel').style.display !== 'none') {
+    loadStats();
+    loadBroadcastStats();
+  }
+}, 30000);
+</script>
+</body>
+</html>

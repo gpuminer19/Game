@@ -1020,10 +1020,46 @@ const gpuTemplates = [...regularMiners, ...limitedMiners];
 const EXCHANGE_RATE = 0.001;
 
 // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
-let tg = window.Telegram.WebApp;
-tg.requestFullscreen();
-let user = tg.initDataUnsafe?.user;
-let userId = user?.id || "test_" + Math.floor(Math.random() * 10000);
+// ========== ИНИЦИАЛИЗАЦИЯ TELEGRAM И ПОЛЬЗОВАТЕЛЯ ==========
+let tg;
+let user;
+let userId;
+let userName = "Игрок";
+
+try {
+    tg = window.Telegram.WebApp;
+    tg.requestFullscreen();
+    tg.expand();
+    
+    user = tg.initDataUnsafe?.user;
+    
+    if (user?.id) {
+        userId = user.id.toString();
+        userName = user.first_name || user.username || `User_${userId.slice(-5)}`;
+        console.log("✅ Telegram user data received:", { userId, userName });
+    } else {
+        console.warn("⚠️ No Telegram user data, using fallback");
+        const savedId = localStorage.getItem('userId');
+        if (savedId) {
+            userId = savedId;
+        } else {
+            userId = "test_" + Math.floor(Math.random() * 10000);
+            localStorage.setItem('userId', userId);
+        }
+        
+        const savedName = localStorage.getItem('userName');
+        if (savedName) {
+            userName = savedName;
+        } else {
+            userName = prompt("Введите ваше имя для игры:", "Игрок") || "Игрок";
+            localStorage.setItem('userName', userName);
+        }
+    }
+} catch (error) {
+    console.error("❌ Telegram init error:", error);
+    userId = "test_" + Math.floor(Math.random() * 10000);
+    userName = "Игрок";
+}
 
 let playerData = {
   ton: 0,

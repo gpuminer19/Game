@@ -1098,29 +1098,28 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
     <div class="user-id" id="userIdShort">---</div>
   </div>
 
-  <div class="balance-row">
+<div class="balance-row">
+    <!-- Карточка TON Balance -->
     <div class="balance-card">
-      <div class="balance-label"><img src="ton.png" class="icon-img"> TON Balance</div>
-      <div class="balance-value">
-        <span id="ton">0</span>
-      </div>
-     
+        <div class="balance-label"><img src="ton.png" class="icon-img"> TON Balance</div>
+        <div class="balance-value">
+            <span id="ton">0</span>
+        </div>
+    </div>
     
-    <!-- НОВАЯ ИКОНКА КУБКА -->
-    <div class="balance-card trophy-icon" id="trophyBtn" style="flex: 0 0 auto; text-align: center; cursor: pointer;">
+    <!-- ИКОНКА КУБКА ОТДЕЛЬНО (между карточками) -->
+    <div class="balance-card" id="trophyBtn" style="flex: 0 0 auto; text-align: center; cursor: pointer; background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05)); border-color: rgba(255,215,0,0.3);">
         <i class="fa-solid fa-trophy" style="font-size: 28px; color: #FFD700;"></i>
-        <div style="font-size: 9px; color: #FFD700;">Рейтинг</div>
+        <div style="font-size: 9px; color: #FFD700; margin-top: 4px;">Рейтинг</div>
     </div>
     
-      
-    </div>
+    <!-- Карточка GPU Tokens -->
     <div class="balance-card">
-      <div class="balance-label"><img src="gpu.png" class="icon-img"> GPU Tokens</div>
-      <div class="balance-value">
-        <span id="gpuBalance">0</span>
-      </div>
+        <div class="balance-label"><img src="gpu.png" class="icon-img"> GPU Tokens</div>
+        <div class="balance-value">
+            <span id="gpuBalance">0</span>
+        </div>
     </div>
-  </div>
 </div>
 
 <div class="content-wrapper">

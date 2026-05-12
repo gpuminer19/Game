@@ -988,6 +988,220 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
     padding-bottom: 70px;
 }
   
+  /* ===== КНОПКА РЕЙТИНГА ===== */
+.rating-btn {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  border: none;
+  border-radius: 18px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 70px;
+  color: #0B0E1A;
+  font-weight: bold;
+}
+
+.rating-btn i {
+  font-size: 20px;
+}
+
+.rating-btn span {
+  font-size: 10px;
+}
+
+.rating-btn:active {
+  transform: scale(0.95);
+}
+
+/* ===== МОДАЛЬНОЕ ОКНО РЕЙТИНГА ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-container {
+  background: linear-gradient(135deg, #0B0E1A, #0F1322);
+  border-radius: 28px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow: hidden;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal-container {
+  transform: scale(1);
+}
+
+.modal-header {
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 165, 0, 0.05));
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  font-size: 20px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+.modal-content {
+  padding: 20px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.rankings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 215, 0, 0.1);
+  transition: all 0.2s;
+}
+
+.ranking-item:hover {
+  background: rgba(255, 215, 0, 0.1);
+  transform: translateX(5px);
+}
+
+.rank-number {
+  font-size: 24px;
+  font-weight: 800;
+  min-width: 50px;
+  text-align: center;
+}
+
+.rank-number.top-1 {
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.rank-number.top-2 {
+  color: #C0C0C0;
+}
+
+.rank-number.top-3 {
+  color: #CD7F32;
+}
+
+.rank-info {
+  flex: 1;
+}
+
+.rank-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.rank-stake {
+  font-size: 12px;
+  color: #FFD700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rank-stake i {
+  font-size: 12px;
+}
+
+.rank-reward {
+  font-size: 12px;
+  color: #00FFAA;
+  background: rgba(0, 255, 170, 0.1);
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+
+.loading-rankings {
+  text-align: center;
+  padding: 40px;
+  color: #8EA3D4;
+}
+
+.empty-rankings {
+  text-align: center;
+  padding: 40px;
+  color: #8EA3D4;
+}
+
+.empty-rankings i {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.modal-footer {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
+  font-size: 11px;
+  color: #6B7CA8;
+  text-align: center;
+}
 </style>
 </head>
 <body>
@@ -1022,18 +1236,24 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
     <div class="user-id" id="userIdShort">---</div>
   </div>
 
-  <div class="balance-row">
-    <div class="balance-card">
-      <div class="balance-label"><img src="ton.png" class="icon-img"> TON Balance</div>
-      <div class="balance-value">
-        <span id="ton">0</span>
-      </div>
+<div class="balance-row">
+  <div class="balance-card">
+    <div class="balance-label"><img src="ton.png" class="icon-img"> TON Balance</div>
+    <div class="balance-value">
+      <span id="ton">0</span>
     </div>
-    <div class="balance-card">
-      <div class="balance-label"><img src="gpu.png" class="icon-img"> GPU Tokens</div>
-      <div class="balance-value">
-        <span id="gpuBalance">0</span>
-      </div>
+  </div>
+  
+  <!-- НОВАЯ КНОПКА РЕЙТИНГА -->
+  <button id="ratingBtn" class="rating-btn" onclick="openRatingModal()">
+    <i class="fa-solid fa-trophy"></i>
+    <span>Рейтинг</span>
+  </button>
+  
+  <div class="balance-card">
+    <div class="balance-label"><img src="gpu.png" class="icon-img"> GPU Tokens</div>
+    <div class="balance-value">
+      <span id="gpuBalance">0</span>
     </div>
   </div>
 </div>
@@ -1299,6 +1519,30 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
 </div>
 
 <div id="toast" class="toast"></div>
+
+<!-- Модальное окно рейтинга -->
+<div id="ratingModal" class="modal-overlay">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2>
+        <i class="fa-solid fa-crown"></i>
+        Топ стейкеров
+      </h2>
+      <button class="modal-close" onclick="closeRatingModal()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="modal-content" id="ratingModalContent">
+      <div class="loading-rankings">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <p>Загрузка рейтинга...</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <i class="fa-solid fa-chart-line"></i> Рейтинг по сумме активных стейков GPU
+    </div>
+  </div>
+</div>
 
 <script>
 // ========== НАСТРОЙКИ ==========
@@ -2417,6 +2661,129 @@ function copyText(text) {
   showToast("Скопировано!", 'success');
 }
 
+// ========== ФУНКЦИИ ДЛЯ РЕЙТИНГА ==========
+
+// Открыть модальное окно с рейтингом
+async function openRatingModal() {
+  const modal = document.getElementById('ratingModal');
+  modal.classList.add('active');
+  
+  // Загружаем рейтинг
+  await loadRankings();
+}
+
+// Закрыть модальное окно
+function closeRatingModal() {
+  const modal = document.getElementById('ratingModal');
+  modal.classList.remove('active');
+}
+
+// Загрузить рейтинг с сервера
+async function loadRankings() {
+  const contentDiv = document.getElementById('ratingModalContent');
+  
+  // Показываем загрузку
+  contentDiv.innerHTML = `
+    <div class="loading-rankings">
+      <i class="fa-solid fa-spinner fa-spin"></i>
+      <p>Загрузка рейтинга...</p>
+    </div>
+  `;
+  
+  try {
+    const response = await fetch(`${API_URL.replace('/api/tg', '')}/api/staking/rankings`);
+    const data = await response.json();
+    
+    if (data.success && data.rankings && data.rankings.length > 0) {
+      renderRankings(data.rankings);
+    } else {
+      contentDiv.innerHTML = `
+        <div class="empty-rankings">
+          <i class="fa-solid fa-chart-simple"></i>
+          <p>Пока нет активных стейков</p>
+          <small>Станьте первым в рейтинге!</small>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки рейтинга:', error);
+    contentDiv.innerHTML = `
+      <div class="empty-rankings">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <p>Ошибка загрузки рейтинга</p>
+        <small>Попробуйте позже</small>
+      </div>
+    `;
+  }
+}
+
+// Отрисовать рейтинг
+function renderRankings(rankings) {
+  const contentDiv = document.getElementById('ratingModalContent');
+  
+  const rankingsHtml = `
+    <div class="rankings-list">
+      ${rankings.map((user, index) => {
+        let rankClass = '';
+        if (index === 0) rankClass = 'top-1';
+        else if (index === 1) rankClass = 'top-2';
+        else if (index === 2) rankClass = 'top-3';
+        
+        // Форматируем сумму стейка
+        const stakedAmount = user.totalStakedGpu.toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        });
+        
+        return `
+          <div class="ranking-item">
+            <div class="rank-number ${rankClass}">
+              ${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${user.rank}`}
+            </div>
+            <div class="rank-info">
+              <div class="rank-name">${escapeHtml(user.name)}</div>
+              <div class="rank-stake">
+                <i class="fa-solid fa-lock"></i>
+                ${stakedAmount} GPU в стейкинге
+              </div>
+            </div>
+            <div class="rank-reward">
+              ${index === 0 ? '🏆 Лидер' : index === 1 ? '🥈 2 место' : index === 2 ? '🥉 3 место' : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  
+  contentDiv.innerHTML = rankingsHtml;
+}
+
+// Вспомогательная функция для экранирования HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Закрытие модального окна по клику на оверлей
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('ratingModal');
+  if (e.target === modal) {
+    closeRatingModal();
+  }
+});
+
+// Закрытие по клавише Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('ratingModal');
+    if (modal && modal.classList.contains('active')) {
+      closeRatingModal();
+    }
+  }
+});
+
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 async function init() {
   tg.ready();
@@ -2527,6 +2894,8 @@ async function init() {
 }
 
 init();
+
+
 </script>
 </body>
 </html>

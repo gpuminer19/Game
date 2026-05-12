@@ -1872,7 +1872,7 @@ function renderRegularMiners() {
         priceText = '';
       } else {
         const activeCount = playerData.invitedFriends ? 
-          playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 30).length : 0;
+          playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 100).length : 0;
         canBuy = activeCount >= miner.requiredActive;
         if (canBuy) {
           buyButtonText = '🎁 ПОЛУЧИТЬ';
@@ -1899,7 +1899,7 @@ function renderRegularMiners() {
     let conditionHtml = '';
     if (miner.isReferral) {
       conditionHtml = `<div style="font-size: 8px; color: #FFB347; margin-top: 4px;">
-        ⭐ Требуется: ${miner.requiredActive} приглашённых друзей (каждый должен заработать 30 GPU)
+        ⭐ Требуется: ${miner.requiredActive} приглашённых друзей (каждый должен заработать 100 GPU)
       </div>`;
     }
     

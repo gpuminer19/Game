@@ -1356,15 +1356,15 @@ const regularMiners = [
     tonPerDay: 1.4, gpuPerDay: 780, image: "legendaryminer.png", isReferral: false },
   { id: "minex", name: "Minex", price: 500, priceCurrency: "ton", maxQuantity: null,
     tonPerDay: 7, gpuPerDay: 1800, image: "xminer.png", isReferral: false },
-  { id: "friend", name: "Friend Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
+{ id: "friend", name: "Friend Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
     tonPerDay: 0.1, gpuPerDay: 15, image: "friendminer.png", 
-    isReferral: true, requiredActive: 10, requiredEarned: 30 },
-  { id: "bro", name: "Bro Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
+    isReferral: true, requiredActive: 10, requiredEarned: 100 }, // <-- ИЗМЕНЕНО
+{ id: "bro", name: "Bro Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
     tonPerDay: 0.5, gpuPerDay: 75, image: "brominer.png", 
-    isReferral: true, requiredActive: 50, requiredEarned: 30 },
-  { id: "nexus", name: "Nexus Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
+    isReferral: true, requiredActive: 50, requiredEarned: 100 }, // <-- ИЗМЕНЕНО
+{ id: "nexus", name: "Nexus Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
     tonPerDay: 1.5, gpuPerDay: 200, image: "nexusminer.png", 
-    isReferral: true, requiredActive: 150, requiredEarned: 30 }
+    isReferral: true, requiredActive: 150, requiredEarned: 100 } // <-- ИЗМЕНЕНО
 ];
 
 // ЛИМИТИРОВАННЫЕ МАЙНЕРЫ (7 дней)

@@ -2048,24 +2048,72 @@ async function loadTasksGame() {
   }
 }
 
-async function completeTask(taskId, taskUrl) {
-    if (taskUrl && taskUrl.trim() !== "") {
-        window.open(taskUrl, '_blank');
-        showToast("🔗 Задание открыто! После выполнения нажмите кнопку ещё раз для подтверждения", 'success');
+// Функция выполнения задания
+async function completeTask(taskId) {
+  try {
+    showLoading(true);
+    
+    const response = await fetch('/api/tg', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || ''
+      },
+      body: JSON.stringify({
+        action: 'tasks/complete',
+        user_id: userData.userId,
+        taskId: taskId
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Задание выполнено успешно
+      showToast('✅ Задание выполнено! Награда получена!', 'success');
+      
+      // Обновляем баланс пользователя
+      if (result.data) {
+        updateUserBalance(result.data.ton, result.data.gpu);
+      }
+      
+      // Помечаем задание как выполненное в интерфейсе
+      markTaskAsCompleted(taskId);
+      
+      // Обновляем список заданий
+      await loadTasks();
+      
     } else {
-        showToast("⚠️ Для этого задания нет ссылки.", 'error');
+      // Обработка ошибок
+      if (result.error === 'ALREADY_COMPLETED') {
+        showToast('⚠️ Вы уже выполнили это задание', 'warning');
+        markTaskAsCompleted(taskId);
+      } else if (result.error === 'TASK_NOT_FOUND') {
+        showToast('❌ Задание не найдено', 'error');
+      } else {
+        showToast('❌ Ошибка: ' + (result.error || 'Не удалось выполнить задание'), 'error');
+      }
     }
     
-    const result = await apiRequest("tasks/complete", { taskId });
-    
-    if (result?.success) {
-        showToast("✅ Задание отмечено как выполненное! Ожидайте проверки", 'success');
-    } else {
-        showToast("❌ Ошибка при выполнении задания", 'error');
+  } catch (error) {
+    console.error('Task completion error:', error);
+    showToast('❌ Ошибка соединения', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Вспомогательная функция для отметки задания выполненным
+function markTaskAsCompleted(taskId) {
+  const taskElement = document.querySelector(`.task-item[data-task-id="${taskId}"]`);
+  if (taskElement) {
+    taskElement.classList.add('completed');
+    const button = taskElement.querySelector('.task-button');
+    if (button) {
+      button.textContent = '✅ Выполнено';
+      button.disabled = true;
     }
-    
-    await loadTasksGame();
-    await syncWithServer();
+  }
 }
 
 // ========== ОБМЕН TON -> GPU ==========

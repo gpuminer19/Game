@@ -1327,7 +1327,7 @@ hr { margin: 12px 0; border-color: rgba(0,212,255,0.2); }
                 <div class="staking-input-group">
                     <label><img src="gpu.png" class="icon-img"> Количество GPU для стейкинга</label>
                     <div class="flex-row">
-                        <input type="number" id="stakeAmount" placeholder="Введите количество GPU" step="100" min="2000">
+                        <input type="number" id="stakeAmount" placeholder="Введите количество GPU" step="500" min="2000">
                         <button id="createStakeBtn" class="staking-confirm-btn glass-btn">🔒 Застейкать</button>
                     </div>
                     <div class="staking-min-hint">Минимум 2000 GPU</div>
@@ -1469,13 +1469,13 @@ const regularMiners = [
     tonPerDay: 7, gpuPerDay: 1800, image: "xminer.png", isReferral: false },
 { id: "friend", name: "Friend Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
     tonPerDay: 0.1, gpuPerDay: 15, image: "friendminer.png", 
-    isReferral: true, requiredActive: 10, requiredEarned: 100 }, // <-- ИЗМЕНЕНО
+    isReferral: true, requiredActive: 10, requiredEarned: 300 }, // <-- ИЗМЕНЕНО
 { id: "bro", name: "Bro Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
     tonPerDay: 0.5, gpuPerDay: 75, image: "brominer.png", 
-    isReferral: true, requiredActive: 50, requiredEarned: 100 }, // <-- ИЗМЕНЕНО
+    isReferral: true, requiredActive: 50, requiredEarned: 300 }, // <-- ИЗМЕНЕНО
 { id: "nexus", name: "Nexus Miner", price: 0, priceCurrency: "ref", maxQuantity: null,
     tonPerDay: 1.5, gpuPerDay: 200, image: "nexusminer.png", 
-    isReferral: true, requiredActive: 150, requiredEarned: 100 } // <-- ИЗМЕНЕНО
+    isReferral: true, requiredActive: 150, requiredEarned: 300 } // <-- ИЗМЕНЕНО
 ];
 
 // ЛИМИТИРОВАННЫЕ МАЙНЕРЫ (7 дней)
@@ -1983,7 +1983,7 @@ function renderRegularMiners() {
         priceText = '';
       } else {
         const activeCount = playerData.invitedFriends ? 
-          playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 100).length : 0;
+          playerData.invitedFriends.filter(f => (f.earnedGpu || 0) >= 500).length : 0;
         canBuy = activeCount >= miner.requiredActive;
         if (canBuy) {
           buyButtonText = '🎁 ПОЛУЧИТЬ';

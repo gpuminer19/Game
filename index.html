@@ -6,7 +6,34 @@
 <title>CryptoGPU | Telegram Mining</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
+<!-- ===== КАСКАДНАЯ РЕКЛАМА: GigaPub → AdsGram → TADS ===== -->
+<!-- 1. GIGAPUB (основной, с авто-переключением серверов) -->
+<script data-project-id="6686">
+  !function(){
+    var s=document.currentScript,p=s.getAttribute('data-project-id')||'default';
+    var d=['https://ad.gigapub.tech','https://ru-ad.gigapub.tech'],i=0,t,sc;
+    function l(){
+      sc=document.createElement('script');
+      sc.async=true;
+      sc.src=d[i]+'/script?id='+p;
+      clearTimeout(t);
+      t=setTimeout(function(){
+        sc.onload=sc.onerror=null;
+        sc.src='';
+        if(++i<d.length)l();
+      },15000);
+      sc.onload=function(){clearTimeout(t)};
+      sc.onerror=function(){clearTimeout(t);if(++i<d.length)l()};
+      document.head.appendChild(sc);
+    }
+    l();
+  }();
+</script>
+
+<!-- 2. ADSGRAM (первый резерв) -->
 <script src="https://adsgram.ai/js/adsgram.js"></script>
+
+<!-- 3. TADS (последний резерв) -->
 <script src="https://sdk.tads.me/v1/tads.js"></script>
 <style>
   
@@ -1561,78 +1588,107 @@ async function syncWithServer() {
 }
 
 // ========== КАСКАДНАЯ РЕКЛАМА ==========
-function showAdsgramAd() {
-    return new Promise((resolve, reject) => {
+// ========== ФУНКЦИИ ПОКАЗА РЕКЛАМЫ (КАСКАД) ==========
+
+// 1. GigaPub (основной)
+async function showGigaPubAd() {
+    try {
+        if (typeof window.showGiga === 'undefined') {
+            console.warn('⚠️ GigaPub SDK не загружен');
+            return false;
+        }
+        console.log('📢 Пробуем GigaPub...');
+        await window.showGiga();
+        console.log('✅ GigaPub: реклама показана');
+        return true;
+    } catch (error) {
+        console.warn('❌ GigaPub ошибка:', error);
+        return false;
+    }
+}
+
+// 2. AdsGram (первый резерв)
+async function showAdsgramAd() {
+    return new Promise((resolve) => {
         if (typeof window.Adsgram === 'undefined') {
-            console.warn('❌ AdsGram SDK не загружен');
-            reject('SDK not loaded');
+            console.warn('⚠️ AdsGram SDK не загружен');
+            resolve(false);
             return;
         }
-        
-        console.log('📢 Попытка показать AdsGram рекламу...');
-        
+        console.log('📢 Пробуем AdsGram...');
         window.Adsgram.init({ blockId: '29842' })
             .show()
             .then(() => {
-                console.log('✅ AdsGram реклама успешно показана и закрыта');
-                resolve();
+                console.log('✅ AdsGram: реклама показана');
+                resolve(true);
             })
             .catch((error) => {
-                console.error('❌ AdsGram ошибка:', error);
-                reject(error);
+                console.warn('❌ AdsGram ошибка:', error);
+                resolve(false);
             });
     });
 }
 
-function showTadsAd() {
-    return new Promise((resolve, reject) => {
+// 3. TADS (последний резерв)
+async function showTadsAd() {
+    return new Promise((resolve) => {
         if (typeof window.Tads === 'undefined') {
-            console.warn('TADS не загружен');
-            reject('TADS not loaded');
+            console.warn('⚠️ TADS SDK не загружен');
+            resolve(false);
             return;
         }
-        
+        console.log('📢 Пробуем TADS...');
+        let isResolved = false;
         try {
             window.Tads.init({
                 widgetId: 9710,
                 onReward: () => {
-                    console.log('✅ TADS реклама просмотрена');
-                    resolve();
+                    if (!isResolved) {
+                        console.log('✅ TADS: реклама показана');
+                        isResolved = true;
+                        resolve(true);
+                    }
                 },
                 onClose: () => {
-                    console.log('❌ TADS реклама закрыта без просмотра');
-                    reject('closed early');
+                    if (!isResolved) {
+                        console.warn('❌ TADS: закрыта без просмотра');
+                        isResolved = true;
+                        resolve(false);
+                    }
                 },
                 onError: (error) => {
-                    console.error('TADS ошибка:', error);
-                    reject(error);
+                    if (!isResolved) {
+                        console.warn('❌ TADS ошибка:', error);
+                        isResolved = true;
+                        resolve(false);
+                    }
                 }
             });
-            
             window.Tads.show();
         } catch (error) {
-            reject(error);
+            console.warn('❌ TADS исключение:', error);
+            resolve(false);
         }
     });
 }
 
+// Главная каскадная функция
 async function showAdWithCascade() {
-    try {
-        await showAdsgramAd();
-        return true;
-    } catch (error) {
-        console.log('AdsGram не сработал, пробуем TADS:', error);
-        try {
-            await showTadsAd();
-            return true;
-        } catch (error2) {
-            console.log('TADS тоже не сработал, выдаём награду без рекламы:', error2);
-            showToast("Реклама временно недоступна. Награда выдана!", 'warning');
-            return false;
-        }
-    }
+    console.log('🎬 Запуск каскадного показа рекламы (GigaPub → AdsGram → TADS)');
+    
+    const gigapubShown = await showGigaPubAd();
+    if (gigapubShown) return true;
+    
+    const adsgramShown = await showAdsgramAd();
+    if (adsgramShown) return true;
+    
+    const tadsShown = await showTadsAd();
+    if (tadsShown) return true;
+    
+    console.warn('⚠️ Все рекламные сети недоступны');
+    showToast("Реклама временно недоступна, награда выдана!", 'warning');
+    return false;
 }
-
 // ========== СБОР НАКОПЛЕННОГО ==========
 async function claimAccumulatedReward() {
     const result = await apiRequest("claim", {});

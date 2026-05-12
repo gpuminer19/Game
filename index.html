@@ -1563,32 +1563,24 @@ async function syncWithServer() {
 // ========== КАСКАДНАЯ РЕКЛАМА ==========
 function showAdsgramAd() {
     return new Promise((resolve, reject) => {
-        if (typeof AdsgramReward === 'undefined') {
-            console.warn('AdsGram не загружен');
-            reject('AdsGram not loaded');
+        if (typeof window.Adsgram === 'undefined') {
+            console.warn('❌ AdsGram SDK не загружен');
+            reject('SDK not loaded');
             return;
         }
         
-        try {
-            const adController = new AdsgramReward({
-                blockId: '29842',
-                onReward: () => {
-                    console.log('✅ AdsGram реклама просмотрена');
-                    resolve();
-                },
-                onError: (error) => {
-                    console.error('AdsGram ошибка:', error);
-                    reject(error);
-                },
-                onClose: () => {
-                    reject('closed early');
-                }
+        console.log('📢 Попытка показать AdsGram рекламу...');
+        
+        window.Adsgram.init({ blockId: '29842' })
+            .show()
+            .then(() => {
+                console.log('✅ AdsGram реклама успешно показана и закрыта');
+                resolve();
+            })
+            .catch((error) => {
+                console.error('❌ AdsGram ошибка:', error);
+                reject(error);
             });
-            
-            adController.show().catch(reject);
-        } catch (error) {
-            reject(error);
-        }
     });
 }
 
